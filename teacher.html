@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NMSPing — Teacher Location</title>
+  <title>NMSPing — Teacher Location & Pings</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
@@ -19,6 +19,7 @@
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
   <div class="max-w-6xl mx-auto space-y-4">
+    <!-- Top Header -->
     <header class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <div class="text-xs font-semibold text-emerald-400 uppercase">Teacher Console</div>
@@ -27,12 +28,28 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <button id="enableNotifBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500/20 border border-amber-400/50 text-amber-200 hover:bg-amber-500/30 cursor-pointer">
+          Enable Ping Alerts
+        </button>
         <button data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
         <button data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
         <button data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
         <button id="logoutBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
       </div>
     </header>
+
+    <!-- Live Incoming Student Pings Box -->
+    <section id="pingsSection" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-amber-300">
+          Incoming Student Pings (<span id="pingCount">0</span>)
+        </h2>
+        <button id="clearAllPingsBtn" class="text-xs text-slate-400 hover:text-white cursor-pointer">Clear All</button>
+      </div>
+      <div id="pingsList" class="space-y-2 text-xs text-slate-400">
+        No student pings yet.
+      </div>
+    </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <aside class="space-y-4">
@@ -53,7 +70,14 @@
             id="byTimetableBtn"
             class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
           >
-            According to Timetable
+            According to Timetable (Confirm)
+          </button>
+
+          <button
+            id="autoModeBtn"
+            class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 px-4 text-xs transition cursor-pointer"
+          >
+            Resume Auto-Timetable Mode
           </button>
 
           <button
@@ -64,13 +88,13 @@
           </button>
 
           <div id="statusBanner" class="text-xs rounded-xl bg-slate-950 border border-slate-800 p-3 text-slate-300">
-            Status: Waiting for selection
+            Status: Auto-timetable checking every 10s...
           </div>
         </div>
 
-        <!-- Timetable Upload & Current Time Slots (No Fake Demo Data) -->
+        <!-- Timetable Upload & Current Time Slots -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <h2 class="text-sm font-bold text-white">Timetable Photo & Time Slots</h2>
+          <h2 class="text-sm font-bold text-white">Timetable Photo & Auto Slots</h2>
 
           <input
             id="timetablePhoto"
@@ -101,8 +125,8 @@
               <option value="1">Floor 1</option>
               <option value="2">Floor 2</option>
             </select>
-            <input id="slotStart" type="time" value="13:00" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
-            <input id="slotEnd" type="time" value="14:30" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
+            <input id="slotStart" type="time" value="14:00" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
+            <input id="slotEnd" type="time" value="15:00" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
           </div>
 
           <input
@@ -136,16 +160,16 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const firebaseConfig = {
-    apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
-    authDomain: "nmsping-a2909.firebaseapp.com",
-    projectId: "nmsping-a2909",
-    storageBucket: "nmsping-a2909.firebasestorage.app",
-    messagingSenderId: "321227369348",
-    appId: "1:321227369348:web:86e1a1b09b8333ced48bd1",
-    databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
+      apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
+      authDomain: "nmsping-a2909.firebaseapp.com",
+      projectId: "nmsping-a2909",
+      storageBucket: "nmsping-a2909.firebasestorage.app",
+      messagingSenderId: "321227369348",
+      appId: "1:321227369348:web:86e1a1b09b8333ced48bd1",
+      databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
     };
 
     const FLOORS = {
@@ -179,6 +203,9 @@
     let selectedRoom = null;
     let slots = [];
     let currentState = {};
+    let isLoggingOut = false;
+    let knownPingIds = new Set();
+    let initialPingsLoaded = false;
 
     const teacherTitle = document.getElementById("teacherTitle");
     const clockText = document.getElementById("clockText");
@@ -188,6 +215,37 @@
     const polyLayer = document.getElementById("polyLayer");
     const labelLayer = document.getElementById("labelLayer");
     const slotList = document.getElementById("slotList");
+    const pingsList = document.getElementById("pingsList");
+    const pingCount = document.getElementById("pingCount");
+
+    // Pre-select today's day in the slot dropdown for convenience
+    document.getElementById("slotDay").value = String(new Date().getDay());
+
+    function playChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1174, ctx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.36);
+      } catch (_) {}
+    }
+
+    function notifyTeacher(ping) {
+      playChime();
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(`NMSPing from ${ping.from}`, {
+          body: `${ping.reason} — Open NMSPing to confirm your room.`
+        });
+      }
+    }
 
     function centerOf(pointsStr) {
       const pts = pointsStr.trim().split(/\s+/).map(p => {
@@ -270,31 +328,48 @@
       });
     }
 
-    async function syncAutoTimetableIfNeeded() {
-      if (!teacherKey) return;
+    async function checkAutoTimetable() {
+      if (!auth.currentUser || !teacherKey) return;
+      // Do not overwrite manual DND or manual room confirmation
       if (currentState.dnd || currentState.confirmed) return;
 
       const match = findMatchingSlot();
       if (match) {
-        await set(ref(db, `presence/${teacherKey}`), {
-          name: displayName,
-          floor: match.floor,
-          room: match.room,
-          mode: "possible",
-          dnd: false,
-          updatedAt: Date.now()
-        });
-      } else if (currentState.mode === "possible") {
+        if (currentState.mode !== "possible" || currentState.floor !== match.floor || currentState.room !== match.room) {
+          await set(ref(db, `presence/${teacherKey}`), {
+            name: displayName,
+            floor: match.floor,
+            room: match.room,
+            mode: "possible",
+            confirmed: false,
+            dnd: false,
+            updatedAt: Date.now()
+          });
+        }
+      } else if (currentState.mode && currentState.mode !== "off") {
         await set(ref(db, `presence/${teacherKey}`), {
           name: displayName,
           floor: currentState.floor || "g",
           room: "",
           mode: "off",
+          confirmed: false,
           dnd: false,
           updatedAt: Date.now()
         });
       }
     }
+
+    document.getElementById("enableNotifBtn").addEventListener("click", async () => {
+      if (!("Notification" in window)) {
+        alert("This browser does not support desktop pop-up alerts—in-page alerts and sound will still work!");
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm === "granted") {
+        playChime();
+        alert("Ping alerts enabled!");
+      }
+    });
 
     document.querySelectorAll(".floor-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -319,7 +394,6 @@
         dnd: false,
         updatedAt: Date.now()
       });
-      statusBanner.textContent = `Confirmed live in Floor ${currentFloor.toUpperCase()} • ${selectedRoom}`;
     });
 
     document.getElementById("byTimetableBtn").addEventListener("click", async () => {
@@ -341,7 +415,19 @@
         updatedAt: Date.now()
       });
       renderMap();
-      statusBanner.textContent = `Confirmed via timetable: Floor ${match.floor.toUpperCase()} • ${match.room}`;
+    });
+
+    document.getElementById("autoModeBtn").addEventListener("click", async () => {
+      await set(ref(db, `presence/${teacherKey}`), {
+        name: displayName,
+        floor: currentFloor,
+        room: "",
+        mode: "off",
+        confirmed: false,
+        dnd: false,
+        updatedAt: Date.now()
+      });
+      await checkAutoTimetable();
     });
 
     document.getElementById("dndBtn").addEventListener("click", async () => {
@@ -354,7 +440,10 @@
         dnd: true,
         updatedAt: Date.now()
       });
-      statusBanner.textContent = "Do Not Disturb ON — your name is removed from the student map.";
+    });
+
+    document.getElementById("clearAllPingsBtn").addEventListener("click", async () => {
+      await remove(ref(db, `pings/${teacherKey}`));
     });
 
     document.getElementById("addSlotBtn").addEventListener("click", async () => {
@@ -385,24 +474,61 @@
     });
 
     document.getElementById("logoutBtn").addEventListener("click", async () => {
+      isLoggingOut = true;
       await signOut(auth);
-      window.location.href = "./index.html";
+      window.location.replace("./index.html");
     });
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        window.location.href = "./index.html";
-        return;
-      }
-      const email = (user.email || "").toLowerCase();
+    await auth.authStateReady();
+    if (!auth.currentUser) {
+      window.location.replace("./index.html");
+    } else {
+      const email = (auth.currentUser.email || "").toLowerCase();
       displayName = email.split("@")[0];
       teacherKey = email.replace(/[^a-z0-9]/g, "_");
       teacherTitle.textContent = displayName;
 
+      // Listen for incoming student pings in real time
+      onValue(ref(db, `pings/${teacherKey}`), (snap) => {
+        const val = snap.val() || {};
+        const entries = Object.entries(val).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+        pingCount.textContent = String(entries.length);
+
+        pingsList.innerHTML = entries.length ? "" : "No student pings yet.";
+        entries.forEach(([id, p]) => {
+          if (initialPingsLoaded && !knownPingIds.has(id)) {
+            notifyTeacher(p);
+          }
+          knownPingIds.add(id);
+
+          const timeStr = p.createdAt
+            ? new Date(p.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : "";
+
+          const row = document.createElement("div");
+          row.className = "flex flex-wrap items-center justify-between gap-2 bg-amber-950/40 border border-amber-500/40 rounded-xl px-3 py-2";
+          row.innerHTML = `
+            <div>
+              <span class="font-bold text-white">${p.from}</span>
+              <span class="text-amber-200 ml-2">• ${p.reason}</span>
+              <span class="text-slate-400 ml-2">${timeStr}</span>
+            </div>
+            <button class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">
+              Dismiss
+            </button>
+          `;
+          row.querySelector("button").addEventListener("click", async () => {
+            await remove(ref(db, `pings/${teacherKey}/${id}`));
+          });
+          pingsList.appendChild(row);
+        });
+        initialPingsLoaded = true;
+      });
+
       onValue(ref(db, `timetables/${teacherKey}`), (snap) => {
         slots = snap.val() || [];
         renderSlots();
-        syncAutoTimetableIfNeeded();
+        checkAutoTimetable();
       });
 
       onValue(ref(db, `presence/${teacherKey}`), (snap) => {
@@ -413,15 +539,23 @@
           statusBanner.textContent = `Confirmed on map: Floor ${(currentState.floor || "g").toUpperCase()} • ${currentState.room}`;
         } else if (currentState.mode === "possible") {
           statusBanner.textContent = `Auto-timetable active: showing "Possible: ${displayName}" in ${currentState.room}`;
+        } else {
+          statusBanner.textContent = "Auto-timetable active: no scheduled class right now.";
         }
       });
-    });
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user && !isLoggingOut) {
+          window.location.replace("./index.html");
+        }
+      });
+    }
 
     updateClock();
     setInterval(() => {
       updateClock();
-      syncAutoTimetableIfNeeded();
-    }, 15000);
+      checkAutoTimetable();
+    }, 10000);
     renderMap();
   </script>
 </body>
