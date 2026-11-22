@@ -14,17 +14,47 @@
       </span>
       <h1 class="text-2xl font-bold mt-3 text-white">Sign in to NMSPing</h1>
       <p class="text-sm text-slate-400 mt-1">
-        Use your official <strong class="text-slate-200">@gemsed.com</strong> Microsoft account to find available teachers during break windows.
+        Pilot testing mode: sign in with your <strong class="text-slate-200">@gemsed.com</strong> email and password.
       </p>
     </div>
 
-    <button
-      id="msLoginBtn"
-      type="button"
-      class="w-full flex items-center justify-center gap-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 transition cursor-pointer"
-    >
-      <span>Continue with Microsoft (@gemsed.com)</span>
-    </button>
+    <form id="emailLoginForm" class="space-y-4">
+      <div>
+        <label for="emailInput" class="block text-sm font-medium text-slate-300 mb-1">
+          School Email
+        </label>
+        <input
+          id="emailInput"
+          type="email"
+          required
+          autocomplete="email"
+          placeholder="student@gemsed.com"
+          class="w-full rounded-xl bg-slate-950 border border-slate-700 focus:border-blue-500 focus:outline-none px-3.5 py-2.5 text-sm text-white placeholder-slate-500"
+        />
+      </div>
+
+      <div>
+        <label for="passwordInput" class="block text-sm font-medium text-slate-300 mb-1">
+          Password
+        </label>
+        <input
+          id="passwordInput"
+          type="password"
+          required
+          autocomplete="current-password"
+          placeholder="••••••••"
+          class="w-full rounded-xl bg-slate-950 border border-slate-700 focus:border-blue-500 focus:outline-none px-3.5 py-2.5 text-sm text-white placeholder-slate-500"
+        />
+      </div>
+
+      <button
+        id="loginBtn"
+        type="submit"
+        class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 transition cursor-pointer"
+      >
+        Sign In
+      </button>
+    </form>
 
     <div
       id="statusBox"
@@ -50,13 +80,12 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import {
       getAuth,
-      OAuthProvider,
-      signInWithPopup,
+      signInWithEmailAndPassword,
       signOut,
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
 
-    
+    // Replace apiKey, messagingSenderId, and appId from Firebase Console -> Project settings
     const firebaseConfig = {
     apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
     authDomain: "nmsping-a2909.firebaseapp.com",
@@ -72,19 +101,22 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    const msProvider = new OAuthProvider("microsoft.com");
-    msProvider.setCustomParameters({
-      prompt: "select_account"
-    });
-
-    const msLoginBtn = document.getElementById("msLoginBtn");
+    const emailLoginForm = document.getElementById("emailLoginForm");
+    const emailInput = document.getElementById("emailInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const statusBox = document.getElementById("statusBox");
     const signedInPanel = document.getElementById("signedInPanel");
     const userEmailEl = document.getElementById("userEmail");
 
     function showStatus(message, type = "info") {
-      statusBox.classList.remove("hidden", "bg-red-950/60", "border-red-800", "text-red-200", "bg-emerald-950/60", "border-emerald-800", "text-emerald-200", "bg-slate-800", "border-slate-700", "text-slate-200");
+      statusBox.classList.remove(
+        "hidden",
+        "bg-red-950/60", "border-red-800", "text-red-200",
+        "bg-emerald-950/60", "border-emerald-800", "text-emerald-200",
+        "bg-slate-800", "border-slate-700", "text-slate-200"
+      );
       if (type === "error") {
         statusBox.classList.add("bg-red-950/60", "border-red-800", "text-red-200");
       } else if (type === "success") {
@@ -100,47 +132,48 @@
       return email.endsWith(ALLOWED_DOMAIN);
     }
 
-    msLoginBtn.addEventListener("click", async () => {
-      msLoginBtn.disabled = true;
-      showStatus("Opening Microsoft sign-in...", "info");
+    emailLoginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      loginBtn.disabled = true;
+      showStatus("Signing in with Firebase...", "info");
+
       try {
-        const result = await signInWithPopup(auth, msProvider);
-        if (!hasAllowedDomain(result.user)) {
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        if (!hasAllowedDomain(credential.user)) {
           await signOut(auth);
           showStatus("Access denied: only @gemsed.com accounts can use NMSPing.", "error");
         }
       } catch (err) {
-        if (err.code === "auth/popup-closed-by-user") {
-          showStatus("Sign-in window was closed before completing.", "info");
-        } else {
-          showStatus(`Sign-in error (${err.code || "unknown"}): ${err.message}`, "error");
-        }
+        showStatus(`Sign-in failed (${err.code || "error"}): ${err.message}`, "error");
       } finally {
-        msLoginBtn.disabled = false;
+        loginBtn.disabled = false;
       }
     });
 
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
-      showStatus("You have been signed out.", "info");
+      showStatus("Signed out.", "info");
     });
 
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         if (!hasAllowedDomain(user)) {
           await signOut(auth);
+          emailLoginForm.classList.remove("hidden");
           signedInPanel.classList.add("hidden");
-          msLoginBtn.classList.remove("hidden");
           showStatus("Only @gemsed.com email addresses are allowed.", "error");
           return;
         }
-        msLoginBtn.classList.add("hidden");
+        emailLoginForm.classList.add("hidden");
         signedInPanel.classList.remove("hidden");
         userEmailEl.textContent = user.email;
-        showStatus("Verified @gemsed.com session active. Ready for NMSPing.", "success");
+        showStatus("Signed in with verified @gemsed.com account.", "success");
       } else {
         signedInPanel.classList.add("hidden");
-        msLoginBtn.classList.remove("hidden");
+        emailLoginForm.classList.remove("hidden");
       }
     });
   </script>
