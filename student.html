@@ -299,4 +299,52 @@
       });
     });
 
-    document.getElementById("
+    document.getElementById("sendPingBtn").addEventListener("click", async () => {
+      const targetKey = teacherDropdown.value;
+      const reason = document.getElementById("pingReason").value;
+      const newPingRef = push(ref(db, `pings/${targetKey}`));
+      await set(newPingRef, {
+        from: currentStudentEmail,
+        reason,
+        createdAt: Date.now()
+      });
+      const box = document.getElementById("pingStatus");
+      box.textContent = `Ping sent to ${targetKey.replace("_gemsed_com", "")} (${reason})!`;
+      box.classList.remove("hidden");
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      isLoggingOut = true;
+      await signOut(auth);
+      window.location.replace("./index.html");
+    });
+
+    await auth.authStateReady();
+    if (!auth.currentUser) {
+      window.location.replace("./index.html");
+    } else {
+      currentStudentEmail = auth.currentUser.email;
+      document.getElementById("studentGreeting").textContent = `Welcome, ${auth.currentUser.email}`;
+
+      onValue(ref(db, "presence"), (snap) => {
+        allPresence = snap.val() || {};
+        render();
+      });
+
+      onValue(ref(db, "timetables"), (snap) => {
+        allTimetables = snap.val() || {};
+        render();
+      });
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user && !isLoggingOut) {
+          window.location.replace("./index.html");
+        }
+      });
+    }
+
+    setInterval(render, 10000);
+    render();
+  </script>
+</body>
+</html>
