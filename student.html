@@ -7,9 +7,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .room-poly {
-      fill: rgba(59, 130, 246, 0.14);
+      fill: rgba(59, 130, 246, 0.22);
       stroke: #60a5fa;
-      stroke-width: 1.5;
+      stroke-width: 2;
+      cursor: pointer;
+    }
+    .room-poly:hover {
+      fill: rgba(59, 130, 246, 0.38);
     }
   </style>
 </head>
@@ -19,13 +23,14 @@
       <div>
         <div class="text-xs font-semibold text-emerald-400 uppercase">Student Home</div>
         <h1 id="studentGreeting" class="text-xl font-bold text-white">NMSPing Map</h1>
+        <p id="debugLine" class="text-xs text-slate-400 mt-0.5">Loading map...</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
-        <button data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
-        <button data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
-        <button id="logoutBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
+        <button type="button" data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
+        <button type="button" data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
+        <button type="button" data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
+        <button type="button" id="logoutBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
       </div>
     </header>
 
@@ -52,13 +57,14 @@
           </div>
 
           <button
+            type="button"
             id="sendPingBtn"
-            class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
+            class="w-full rounded-xl bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
           >
             Send Ping
           </button>
 
-          <div id="pingStatus" class="hidden text-xs rounded-xl bg-emerald-950/60 border border-emerald-800 p-2.5 text-emerald-200"></div>
+          <div id="pingStatus" class="hidden text-xs rounded-xl bg-emerald-950/60 border border-emerald-800 p-3 text-emerald-200 space-y-1"></div>
         </div>
 
         <!-- Visible Teachers List -->
@@ -70,8 +76,9 @@
 
       <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4">
         <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800">
-          <image id="floorImg" href="floor-g.jpeg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
+          <image id="floorImg" href="./floor-g.jpeg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
           <g id="polyLayer"></g>
+          <g id="roomLabelLayer"></g>
           <g id="beaconLayer"></g>
         </svg>
       </section>
@@ -81,7 +88,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-    import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { getDatabase, ref, onValue, get, push, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
@@ -95,7 +102,7 @@
 
     const FLOORS = {
       g: {
-        img: "floor-g.jpeg",
+        img: "./floor-g.jpeg",
         rooms: [
           { name: "132", points: "161,414 165,507 210,505 212,412" },
           { name: "131", points: "161,388 161,303 208,301 208,388" },
@@ -107,13 +114,12 @@
           { name: "608", points: "380,432 382,478 430,476 426,452 451,448 581,454 583,401 413,405" }
         ]
       },
-      "1": { img: "floor-1.jpeg", rooms: [] },
-      "2": { img: "floor-2.jpeg", rooms: [] }
+      "1": { img: "./floor-1.jpeg", rooms: [] },
+      "2": { img: "./floor-2.jpeg", rooms: [] }
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    const STUDENT_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes per student spam lock
+    const PIGGYBACK_WINDOW_MS = 5 * 60 * 1000; // 5 minutes silent join window
 
     let currentFloor = "g";
     let allPresence = {};
@@ -121,11 +127,14 @@
     let currentStudentEmail = "";
     let isLoggingOut = false;
 
+    const debugLine = document.getElementById("debugLine");
     const floorImg = document.getElementById("floorImg");
     const polyLayer = document.getElementById("polyLayer");
+    const roomLabelLayer = document.getElementById("roomLabelLayer");
     const beaconLayer = document.getElementById("beaconLayer");
     const visibleList = document.getElementById("visibleList");
     const teacherDropdown = document.getElementById("teacherDropdown");
+    const sendPingBtn = document.getElementById("sendPingBtn");
 
     function centerOf(pointsStr) {
       const pts = pointsStr.trim().split(/\s+/).map(p => {
@@ -152,7 +161,6 @@
       ) || null;
     }
 
-    // Combines live presence + continuous timetable check
     function getResolvedTeachers() {
       const keys = new Set([
         "teach_nms_gemsed_com",
@@ -166,7 +174,7 @@
         const name = p.name || key.replace("_gemsed_com", "");
 
         if (p.dnd) {
-          resolved.push({ key, name, hidden: true });
+          resolved.push({ key, name, hidden: true, dnd: true });
           return;
         }
 
@@ -210,6 +218,23 @@
       return resolved;
     }
 
+    function updateCooldownUI() {
+      const targetKey = teacherDropdown.value;
+      const storageKey = `nmsping_cd_${targetKey}`;
+      const until = Number(localStorage.getItem(storageKey) || 0);
+      const remaining = until - Date.now();
+
+      if (remaining > 0) {
+        sendPingBtn.disabled = true;
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.ceil((remaining % 60000) / 1000);
+        sendPingBtn.textContent = `Cooldown (${mins}m ${secs}s)`;
+      } else {
+        sendPingBtn.disabled = false;
+        sendPingBtn.textContent = "Send Ping";
+      }
+    }
+
     function render() {
       const floor = FLOORS[currentFloor];
       floorImg.setAttribute("href", floor.img);
@@ -221,15 +246,31 @@
       });
 
       polyLayer.innerHTML = "";
+      roomLabelLayer.innerHTML = "";
       beaconLayer.innerHTML = "";
 
       const roomCenters = {};
       floor.rooms.forEach(room => {
         roomCenters[room.name] = centerOf(room.points);
+
         const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
         poly.setAttribute("points", room.points);
         poly.setAttribute("class", "room-poly");
+        poly.addEventListener("click", () => {
+          debugLine.textContent = `Room ${room.name} (Floor ${currentFloor.toUpperCase()})`;
+        });
         polyLayer.appendChild(poly);
+
+        const lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        lbl.setAttribute("x", c.x);
+        lbl.setAttribute("y", c.y + 4);
+        lbl.setAttribute("text-anchor", "middle");
+        lbl.setAttribute("fill", "#e2e8f0");
+        lbl.setAttribute("font-size", "12");
+        lbl.setAttribute("font-weight", "bold");
+        lbl.setAttribute("pointer-events", "none");
+        lbl.textContent = room.name;
+        roomLabelLayer.appendChild(lbl);
       });
 
       const teachers = getResolvedTeachers();
@@ -299,18 +340,93 @@
       });
     });
 
-    document.getElementById("sendPingBtn").addEventListener("click", async () => {
+    teacherDropdown.addEventListener("change", updateCooldownUI);
+
+    render();
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    sendPingBtn.addEventListener("click", async () => {
       const targetKey = teacherDropdown.value;
       const reason = document.getElementById("pingReason").value;
-      const newPingRef = push(ref(db, `pings/${targetKey}`));
-      await set(newPingRef, {
-        from: currentStudentEmail,
-        reason,
-        createdAt: Date.now()
-      });
       const box = document.getElementById("pingStatus");
-      box.textContent = `Ping sent to ${targetKey.replace("_gemsed_com", "")} (${reason})!`;
-      box.classList.remove("hidden");
+      const storageKey = `nmsping_cd_${targetKey}`;
+
+      // Block continuous clicking
+      if (Number(localStorage.getItem(storageKey) || 0) > Date.now()) {
+        updateCooldownUI();
+        return;
+      }
+
+      sendPingBtn.disabled = true;
+      try {
+        const now = Date.now();
+        const resolved = getResolvedTeachers().find(t => t.key === targetKey);
+
+        // If teacher is in Do Not Disturb, do not ring them
+        if (resolved?.dnd) {
+          box.innerHTML = `<div class="font-bold text-rose-300">Do Not Disturb is active</div><div>${resolved.name} is currently in a meeting and cannot be pinged right now.</div>`;
+          box.classList.remove("hidden");
+          updateCooldownUI();
+          return;
+        }
+
+        // Check if another student already pinged this teacher within the last 5 minutes
+        const snap = await get(ref(db, `pings/${targetKey}`));
+        const existingPings = Object.values(snap.val() || {});
+        const recentPing = existingPings.find(p => (now - (p.createdAt || 0)) < PIGGYBACK_WINDOW_MS);
+
+        const newPingRef = push(ref(db, `pings/${targetKey}`));
+
+        if (recentPing) {
+          // Silent piggyback: do NOT sound an alert on teacher screen; just log "coming"
+          await set(newPingRef, {
+            from: currentStudentEmail || "student@gemsed.com",
+            reason,
+            type: "coming",
+            createdAt: now
+          });
+
+          // Automatically jump map to teacher's floor if known
+          if (resolved && !resolved.hidden && resolved.floor) {
+            currentFloor = resolved.floor;
+            render();
+            const statusType = resolved.mode === "possible" ? "Possible (Timetable)" : "Confirmed";
+            box.innerHTML = `
+              <div class="font-bold text-amber-300">Joined active ping (no extra alert sent)</div>
+              <div>${resolved.name} — <strong>Floor ${resolved.floor.toUpperCase()} • Room ${resolved.room}</strong> (${statusType})</div>
+            `;
+          } else {
+            box.innerHTML = `
+              <div class="font-bold text-amber-300">Joined active ping (no extra alert sent)</div>
+              <div>Another student recently pinged ${targetKey.replace("_gemsed_com", "")}. Teacher notified that you are also coming.</div>
+            `;
+          }
+        } else {
+          // First ping in window: triggers teacher sound/pop-up alert
+          await set(newPingRef, {
+            from: currentStudentEmail || "student@gemsed.com",
+            reason,
+            type: "alert",
+            createdAt: now
+          });
+
+          box.innerHTML = `
+            <div class="font-bold text-emerald-300">Ping sent to ${targetKey.replace("_gemsed_com", "")}!</div>
+            <div>Reason: ${reason}</div>
+          `;
+        }
+
+        localStorage.setItem(storageKey, String(now + STUDENT_COOLDOWN_MS));
+        box.classList.remove("hidden");
+        updateCooldownUI();
+      } catch (err) {
+        box.textContent = `Ping failed: ${err.message}`;
+        box.classList.remove("hidden");
+        sendPingBtn.disabled = false;
+      }
     });
 
     document.getElementById("logoutBtn").addEventListener("click", async () => {
@@ -319,21 +435,27 @@
       window.location.replace("./index.html");
     });
 
-    await auth.authStateReady();
-    if (!auth.currentUser) {
-      window.location.replace("./index.html");
-    } else {
+    auth.authStateReady().then(() => {
+      if (!auth.currentUser) {
+        window.location.replace("./index.html");
+        return;
+      }
       currentStudentEmail = auth.currentUser.email;
       document.getElementById("studentGreeting").textContent = `Welcome, ${auth.currentUser.email}`;
+      debugLine.textContent = "Connected to NMSPing live map";
 
       onValue(ref(db, "presence"), (snap) => {
         allPresence = snap.val() || {};
         render();
+      }, (err) => {
+        debugLine.textContent = `Database error (presence): ${err.message}`;
       });
 
       onValue(ref(db, "timetables"), (snap) => {
         allTimetables = snap.val() || {};
         render();
+      }, (err) => {
+        debugLine.textContent = `Database error (timetables): ${err.message}`;
       });
 
       onAuthStateChanged(auth, (user) => {
@@ -341,10 +463,12 @@
           window.location.replace("./index.html");
         }
       });
-    }
+    });
 
-    setInterval(render, 10000);
-    render();
+    setInterval(() => {
+      render();
+      updateCooldownUI();
+    }, 1000);
   </script>
 </body>
 </html>
