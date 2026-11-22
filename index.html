@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NMSPing — GEMS New Millennium School Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
+  <main class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-xl">
+    <div class="mb-6">
+      <span class="inline-block text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+        NMSPing Pilot • Floors 1–4
+      </span>
+      <h1 class="text-2xl font-bold mt-3 text-white">Sign in to NMSPing</h1>
+      <p class="text-sm text-slate-400 mt-1">
+        Use your official <strong class="text-slate-200">@gemsed.com</strong> Microsoft account to find available teachers during break windows.
+      </p>
+    </div>
+
+    <button
+      id="msLoginBtn"
+      type="button"
+      class="w-full flex items-center justify-center gap-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold py-3 px-4 transition cursor-pointer"
+    >
+      <span>Continue with Microsoft (@gemsed.com)</span>
+    </button>
+
+    <div
+      id="statusBox"
+      role="status"
+      class="hidden mt-4 rounded-xl p-3.5 text-sm border"
+    ></div>
+
+    <div id="signedInPanel" class="hidden mt-5 pt-5 border-t border-slate-800 space-y-3">
+      <p class="text-sm text-slate-300">
+        Signed in as <strong id="userEmail" class="text-white"></strong>
+      </p>
+      <button
+        id="logoutBtn"
+        type="button"
+        class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium py-2.5 px-4 transition cursor-pointer"
+      >
+        Sign Out
+      </button>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import {
+      getAuth,
+      OAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
+    // Replace with your exact config from Firebase Console -> Project settings
+    const firebaseConfig = {
+  apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
+  authDomain: "nmsping-a2909.firebaseapp.com",
+  projectId: "nmsping-a2909",
+  storageBucket: "nmsping-a2909.firebasestorage.app",
+  messagingSenderId: "321227369348",
+  appId: "1:321227369348:web:86e1a1b09b8333ced48bd1"
+};
+
+    const ALLOWED_DOMAIN = "@gemsed.com";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const msProvider = new OAuthProvider("microsoft.com");
+    msProvider.setCustomParameters({
+      prompt: "select_account"
+    });
+
+    const msLoginBtn = document.getElementById("msLoginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const statusBox = document.getElementById("statusBox");
+    const signedInPanel = document.getElementById("signedInPanel");
+    const userEmailEl = document.getElementById("userEmail");
+
+    function showStatus(message, type = "info") {
+      statusBox.classList.remove("hidden", "bg-red-950/60", "border-red-800", "text-red-200", "bg-emerald-950/60", "border-emerald-800", "text-emerald-200", "bg-slate-800", "border-slate-700", "text-slate-200");
+      if (type === "error") {
+        statusBox.classList.add("bg-red-950/60", "border-red-800", "text-red-200");
+      } else if (type === "success") {
+        statusBox.classList.add("bg-emerald-950/60", "border-emerald-800", "text-emerald-200");
+      } else {
+        statusBox.classList.add("bg-slate-800", "border-slate-700", "text-slate-200");
+      }
+      statusBox.textContent = message;
+    }
+
+    function hasAllowedDomain(user) {
+      const email = (user?.email || "").trim().toLowerCase();
+      return email.endsWith(ALLOWED_DOMAIN);
+    }
+
+    msLoginBtn.addEventListener("click", async () => {
+      msLoginBtn.disabled = true;
+      showStatus("Opening Microsoft sign-in...", "info");
+      try {
+        const result = await signInWithPopup(auth, msProvider);
+        if (!hasAllowedDomain(result.user)) {
+          await signOut(auth);
+          showStatus("Access denied: only @gemsed.com accounts can use NMSPing.", "error");
+        }
+      } catch (err) {
+        if (err.code === "auth/popup-closed-by-user") {
+          showStatus("Sign-in window was closed before completing.", "info");
+        } else {
+          showStatus(`Sign-in error (${err.code || "unknown"}): ${err.message}`, "error");
+        }
+      } finally {
+        msLoginBtn.disabled = false;
+      }
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      showStatus("You have been signed out.", "info");
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        if (!hasAllowedDomain(user)) {
+          await signOut(auth);
+          signedInPanel.classList.add("hidden");
+          msLoginBtn.classList.remove("hidden");
+          showStatus("Only @gemsed.com email addresses are allowed.", "error");
+          return;
+        }
+        msLoginBtn.classList.add("hidden");
+        signedInPanel.classList.remove("hidden");
+        userEmailEl.textContent = user.email;
+        showStatus("Verified @gemsed.com session active. Ready for NMSPing.", "success");
+      } else {
+        signedInPanel.classList.add("hidden");
+        msLoginBtn.classList.remove("hidden");
+      }
+    });
+  </script>
+</body>
+</html>
