@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NMSPing — Teacher Location</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    .room-poly {
+      fill: rgba(59, 130, 246, 0.2);
+      stroke: #93c5fd;
+      stroke-width: 2;
+      cursor: pointer;
+    }
+    .room-poly:hover { fill: rgba(59, 130, 246, 0.38); }
+    .room-poly.active { fill: rgba(16, 185, 129, 0.35); stroke: #34d399; stroke-width: 3; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
+  <div class="max-w-6xl mx-auto space-y-4">
+    <header class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <div class="text-xs font-semibold text-emerald-400 uppercase">Teacher Console</div>
+        <h1 id="teacherTitle" class="text-xl font-bold text-white">teach_nms</h1>
+        <p id="clockText" class="text-xs text-slate-400 mt-0.5"></p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
+        <button data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
+        <button data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
+        <button id="logoutBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <aside class="space-y-4">
+        <!-- Main Status Buttons -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div class="text-xs text-slate-400">
+            Selected Room: <strong id="selectedRoomLabel" class="text-emerald-400">None</strong>
+          </div>
+
+          <button
+            id="confirmRoomBtn"
+            class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
+          >
+            Confirm Selected Room
+          </button>
+
+          <button
+            id="byTimetableBtn"
+            class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
+          >
+            According to Timetable
+          </button>
+
+          <button
+            id="dndBtn"
+            class="w-full rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
+          >
+            Do Not Disturb (Remove from Map)
+          </button>
+
+          <div id="statusBanner" class="text-xs rounded-xl bg-slate-950 border border-slate-800 p-3 text-slate-300">
+            Status: Waiting for selection
+          </div>
+        </div>
+
+        <!-- Timetable Upload & Current Time Slots (No Fake Demo Data) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h2 class="text-sm font-bold text-white">Timetable Photo & Time Slots</h2>
+
+          <input
+            id="timetablePhoto"
+            type="file"
+            accept="image/*"
+            class="block w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 cursor-pointer"
+          />
+          <p id="ocrNote" class="text-[11px] text-slate-400 hidden"></p>
+          <textarea
+            id="ocrRaw"
+            rows="2"
+            placeholder="Scanned timetable text..."
+            class="hidden w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-[11px] text-slate-300"
+          ></textarea>
+
+          <div class="grid grid-cols-2 gap-2">
+            <select id="slotDay" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+            <select id="slotFloor" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+              <option value="g">Floor G</option>
+              <option value="1">Floor 1</option>
+              <option value="2">Floor 2</option>
+            </select>
+            <input id="slotStart" type="time" value="13:00" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
+            <input id="slotEnd" type="time" value="14:30" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
+          </div>
+
+          <input
+            id="slotRoom"
+            type="text"
+            placeholder="Room name (e.g. 134 or meet)"
+            class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-white"
+          />
+
+          <button
+            id="addSlotBtn"
+            class="w-full rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-semibold py-2 px-3 text-xs cursor-pointer"
+          >
+            Save Timetable Slot
+          </button>
+
+          <div id="slotList" class="space-y-1.5 text-xs text-slate-400"></div>
+        </div>
+      </aside>
+
+      <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+        <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800">
+          <image id="floorImg" href="floor-g.jpeg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
+          <g id="polyLayer"></g>
+          <g id="labelLayer"></g>
+        </svg>
+      </section>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "nmsping-a2909.firebaseapp.com",
+      databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "nmsping-a2909",
+      storageBucket: "nmsping-a2909.firebasestorage.app",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const FLOORS = {
+      g: {
+        label: "Floor G",
+        img: "floor-g.jpeg",
+        rooms: [
+          { name: "132", points: "161,414 165,507 210,505 212,412" },
+          { name: "131", points: "161,388 161,303 208,301 208,388" },
+          { name: "134", points: "245,338 247,371 378,371 380,338" },
+          { name: "meet", points: "221,409 223,454 247,463 272,463 313,465 355,462 378,449 377,407" },
+          { name: "154", points: "382,344 380,371 380,393 433,391 453,371 556,370 559,390 561,337" },
+          { name: "524", points: "592,300 592,384 638,382 651,366 649,322 643,297" },
+          { name: "156", points: "596,407 596,497 645,495 654,425 642,405" },
+          { name: "608", points: "380,432 382,478 430,476 426,452 451,448 581,454 583,401 413,405" }
+        ]
+      },
+      "1": { label: "Floor 1", img: "floor-1.jpeg", rooms: [] },
+      "2": { label: "Floor 2", img: "floor-2.jpeg", rooms: [] }
+    };
+
+    const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    let teacherKey = "teach_nms";
+    let displayName = "teach_nms";
+    let currentFloor = "g";
+    let selectedRoom = null;
+    let slots = [];
+    let currentState = {};
+
+    const teacherTitle = document.getElementById("teacherTitle");
+    const clockText = document.getElementById("clockText");
+    const selectedRoomLabel = document.getElementById("selectedRoomLabel");
+    const statusBanner = document.getElementById("statusBanner");
+    const floorImg = document.getElementById("floorImg");
+    const polyLayer = document.getElementById("polyLayer");
+    const labelLayer = document.getElementById("labelLayer");
+    const slotList = document.getElementById("slotList");
+
+    function centerOf(pointsStr) {
+      const pts = pointsStr.trim().split(/\s+/).map(p => {
+        const [x, y] = p.split(",").map(Number);
+        return { x, y };
+      });
+      const sum = pts.reduce((a, b) => ({ x: a.x + b.x, y: a.y + b.y }), { x: 0, y: 0 });
+      return { x: Math.round(sum.x / pts.length), y: Math.round(sum.y / pts.length) };
+    }
+
+    function timeToMinutes(hhmm) {
+      const [h, m] = (hhmm || "00:00").split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    function findMatchingSlot() {
+      const now = new Date();
+      const day = String(now.getDay());
+      const mins = now.getHours() * 60 + now.getMinutes();
+      return slots.find(s =>
+        s.day === day &&
+        mins >= timeToMinutes(s.start) &&
+        mins <= timeToMinutes(s.end)
+      ) || null;
+    }
+
+    function updateClock() {
+      const now = new Date();
+      clockText.textContent = `Current Time: ${DAYS[now.getDay()]} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    }
+
+    function renderMap() {
+      const floor = FLOORS[currentFloor];
+      floorImg.setAttribute("href", floor.img);
+      document.querySelectorAll(".floor-btn").forEach(btn => {
+        btn.className = btn.dataset.floor === currentFloor
+          ? "floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer"
+          : "floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer";
+      });
+
+      polyLayer.innerHTML = "";
+      labelLayer.innerHTML = "";
+
+      floor.rooms.forEach(room => {
+        const c = centerOf(room.points);
+        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        poly.setAttribute("points", room.points);
+        poly.setAttribute("class", selectedRoom === room.name ? "room-poly active" : "room-poly");
+        poly.addEventListener("click", () => {
+          selectedRoom = room.name;
+          selectedRoomLabel.textContent = `${floor.label} • ${room.name}`;
+          renderMap();
+        });
+        polyLayer.appendChild(poly);
+
+        const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        txt.setAttribute("x", c.x);
+        txt.setAttribute("y", c.y + 4);
+        txt.setAttribute("text-anchor", "middle");
+        txt.setAttribute("fill", "#fff");
+        txt.setAttribute("font-size", "12");
+        txt.setAttribute("font-weight", "bold");
+        txt.setAttribute("pointer-events", "none");
+        txt.textContent = room.name;
+        labelLayer.appendChild(txt);
+      });
+    }
+
+    function renderSlots() {
+      slotList.innerHTML = slots.length ? "" : "<p class='text-slate-500'>No timetable slots saved yet.</p>";
+      slots.forEach((s, i) => {
+        const div = document.createElement("div");
+        div.className = "flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5";
+        div.innerHTML = `<span>${DAYS[Number(s.day)]} ${s.start}-${s.end} • Floor ${s.floor.toUpperCase()} ${s.room}</span><button class="text-red-400 cursor-pointer">✕</button>`;
+        div.querySelector("button").addEventListener("click", async () => {
+          slots.splice(i, 1);
+          await set(ref(db, `timetables/${teacherKey}`), slots);
+        });
+        slotList.appendChild(div);
+      });
+    }
+
+    async function syncAutoTimetableIfNeeded() {
+      if (!teacherKey) return;
+      if (currentState.dnd || currentState.confirmed) return;
+
+      const match = findMatchingSlot();
+      if (match) {
+        await set(ref(db, `presence/${teacherKey}`), {
+          name: displayName,
+          floor: match.floor,
+          room: match.room,
+          mode: "possible",
+          dnd: false,
+          updatedAt: Date.now()
+        });
+      } else if (currentState.mode === "possible") {
+        await set(ref(db, `presence/${teacherKey}`), {
+          name: displayName,
+          floor: currentState.floor || "g",
+          room: "",
+          mode: "off",
+          dnd: false,
+          updatedAt: Date.now()
+        });
+      }
+    }
+
+    document.querySelectorAll(".floor-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentFloor = btn.dataset.floor;
+        selectedRoom = null;
+        selectedRoomLabel.textContent = "None";
+        renderMap();
+      });
+    });
+
+    document.getElementById("confirmRoomBtn").addEventListener("click", async () => {
+      if (!selectedRoom) {
+        alert("Tap a room on the map first!");
+        return;
+      }
+      await set(ref(db, `presence/${teacherKey}`), {
+        name: displayName,
+        floor: currentFloor,
+        room: selectedRoom,
+        mode: "confirmed",
+        confirmed: true,
+        dnd: false,
+        updatedAt: Date.now()
+      });
+      statusBanner.textContent = `Confirmed live in Floor ${currentFloor.toUpperCase()} • ${selectedRoom}`;
+    });
+
+    document.getElementById("byTimetableBtn").addEventListener("click", async () => {
+      const match = findMatchingSlot();
+      if (!match) {
+        alert("No timetable slot matches the current day and time yet. Add one below or tap a room on the map.");
+        return;
+      }
+      currentFloor = match.floor;
+      selectedRoom = match.room;
+      selectedRoomLabel.textContent = `Floor ${match.floor.toUpperCase()} • ${match.room}`;
+      await set(ref(db, `presence/${teacherKey}`), {
+        name: displayName,
+        floor: match.floor,
+        room: match.room,
+        mode: "confirmed",
+        confirmed: true,
+        dnd: false,
+        updatedAt: Date.now()
+      });
+      renderMap();
+      statusBanner.textContent = `Confirmed via timetable: Floor ${match.floor.toUpperCase()} • ${match.room}`;
+    });
+
+    document.getElementById("dndBtn").addEventListener("click", async () => {
+      await set(ref(db, `presence/${teacherKey}`), {
+        name: displayName,
+        floor: currentFloor,
+        room: "",
+        mode: "dnd",
+        confirmed: false,
+        dnd: true,
+        updatedAt: Date.now()
+      });
+      statusBanner.textContent = "Do Not Disturb ON — your name is removed from the student map.";
+    });
+
+    document.getElementById("addSlotBtn").addEventListener("click", async () => {
+      const room = document.getElementById("slotRoom").value.trim();
+      if (!room) return alert("Enter a room name.");
+      slots.push({
+        day: document.getElementById("slotDay").value,
+        floor: document.getElementById("slotFloor").value,
+        start: document.getElementById("slotStart").value,
+        end: document.getElementById("slotEnd").value,
+        room
+      });
+      await set(ref(db, `timetables/${teacherKey}`), slots);
+      document.getElementById("slotRoom").value = "";
+    });
+
+    document.getElementById("timetablePhoto").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const ocrNote = document.getElementById("ocrNote");
+      const ocrRaw = document.getElementById("ocrRaw");
+      ocrNote.classList.remove("hidden");
+      ocrRaw.classList.remove("hidden");
+      ocrNote.textContent = "Reading timetable image...";
+      const { data } = await Tesseract.recognize(file, "eng");
+      ocrRaw.value = (data.text || "").trim();
+      ocrNote.textContent = "Text extracted below—add your matching day/time/room slot.";
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "./index.html";
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "./index.html";
+        return;
+      }
+      const email = (user.email || "").toLowerCase();
+      displayName = email.split("@")[0];
+      teacherKey = email.replace(/[^a-z0-9]/g, "_");
+      teacherTitle.textContent = displayName;
+
+      onValue(ref(db, `timetables/${teacherKey}`), (snap) => {
+        slots = snap.val() || [];
+        renderSlots();
+        syncAutoTimetableIfNeeded();
+      });
+
+      onValue(ref(db, `presence/${teacherKey}`), (snap) => {
+        currentState = snap.val() || {};
+        if (currentState.dnd) {
+          statusBanner.textContent = "Do Not Disturb ON — hidden from student map.";
+        } else if (currentState.mode === "confirmed") {
+          statusBanner.textContent = `Confirmed on map: Floor ${(currentState.floor || "g").toUpperCase()} • ${currentState.room}`;
+        } else if (currentState.mode === "possible") {
+          statusBanner.textContent = `Auto-timetable active: showing "Possible: ${displayName}" in ${currentState.room}`;
+        }
+      });
+    });
+
+    updateClock();
+    setInterval(() => {
+      updateClock();
+      syncAutoTimetableIfNeeded();
+    }, 15000);
+    renderMap();
+  </script>
+</body>
+</html>
