@@ -38,7 +38,7 @@
           <div>
             <label for="teacherDropdown" class="block text-xs text-slate-400 mb-1">Select Teacher</label>
             <select id="teacherDropdown" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white">
-              <option value="teach_nms">teach_nms</option>
+              <option value="teach_nms_gemsed_com">teach_nms</option>
             </select>
           </div>
 
@@ -84,13 +84,13 @@
     import { getDatabase, ref, onValue, push, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
     const firebaseConfig = {
-    apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
-    authDomain: "nmsping-a2909.firebaseapp.com",
-    projectId: "nmsping-a2909",
-    storageBucket: "nmsping-a2909.firebasestorage.app",
-    messagingSenderId: "321227369348",
-    appId: "1:321227369348:web:86e1a1b09b8333ced48bd1",
-    databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
+      apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
+      authDomain: "nmsping-a2909.firebaseapp.com",
+      projectId: "nmsping-a2909",
+      storageBucket: "nmsping-a2909.firebasestorage.app",
+      messagingSenderId: "321227369348",
+      appId: "1:321227369348:web:86e1a1b09b8333ced48bd1",
+      databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
     };
 
     const FLOORS = {
@@ -117,7 +117,9 @@
 
     let currentFloor = "g";
     let allPresence = {};
+    let allTimetables = {};
     let currentStudentEmail = "";
+    let isLoggingOut = false;
 
     const floorImg = document.getElementById("floorImg");
     const polyLayer = document.getElementById("polyLayer");
@@ -132,6 +134,80 @@
       });
       const sum = pts.reduce((a, b) => ({ x: a.x + b.x, y: a.y + b.y }), { x: 0, y: 0 });
       return { x: Math.round(sum.x / pts.length), y: Math.round(sum.y / pts.length) };
+    }
+
+    function timeToMinutes(hhmm) {
+      const [h, m] = (hhmm || "00:00").split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    function getActiveSlot(slots) {
+      const now = new Date();
+      const day = String(now.getDay());
+      const mins = now.getHours() * 60 + now.getMinutes();
+      return (slots || []).find(s =>
+        s.day === day &&
+        mins >= timeToMinutes(s.start) &&
+        mins <= timeToMinutes(s.end)
+      ) || null;
+    }
+
+    // Combines live presence + continuous timetable check
+    function getResolvedTeachers() {
+      const keys = new Set([
+        "teach_nms_gemsed_com",
+        ...Object.keys(allPresence),
+        ...Object.keys(allTimetables)
+      ]);
+
+      const resolved = [];
+      keys.forEach((key) => {
+        const p = allPresence[key] || {};
+        const name = p.name || key.replace("_gemsed_com", "");
+
+        if (p.dnd) {
+          resolved.push({ key, name, hidden: true });
+          return;
+        }
+
+        if (p.mode === "confirmed" && p.room) {
+          resolved.push({
+            key,
+            name,
+            floor: p.floor || "g",
+            room: p.room,
+            mode: "confirmed"
+          });
+          return;
+        }
+
+        const slot = getActiveSlot(allTimetables[key]);
+        if (slot) {
+          resolved.push({
+            key,
+            name,
+            floor: slot.floor,
+            room: slot.room,
+            mode: "possible"
+          });
+          return;
+        }
+
+        if (p.mode === "possible" && p.room) {
+          resolved.push({
+            key,
+            name,
+            floor: p.floor || "g",
+            room: p.room,
+            mode: "possible"
+          });
+          return;
+        }
+
+        resolved.push({ key, name, hidden: true });
+      });
+
+      return resolved;
     }
 
     function render() {
@@ -156,18 +232,14 @@
         polyLayer.appendChild(poly);
       });
 
-      // Update dropdown with teachers from presence
-      const entries = Object.entries(allPresence);
-      if (entries.length) {
-        teacherDropdown.innerHTML = entries
-          .map(([key, p]) => `<option value="${key}">${p.name || key}</option>`)
-          .join("");
-      }
+      const teachers = getResolvedTeachers();
+      const prevSelected = teacherDropdown.value;
+      teacherDropdown.innerHTML = teachers
+        .map(t => `<option value="${t.key}">${t.name}</option>`)
+        .join("");
+      if (prevSelected) teacherDropdown.value = prevSelected;
 
-      // Filter teachers on this floor who are NOT in Do Not Disturb and have an active room/mode
-      const shownTeachers = entries
-        .map(([key, p]) => ({ key, ...p }))
-        .filter(p => !p.dnd && p.floor === currentFloor && p.room && (p.mode === "possible" || p.mode === "confirmed"));
+      const shownTeachers = teachers.filter(t => !t.hidden && t.floor === currentFloor && t.room);
 
       visibleList.innerHTML = shownTeachers.length
         ? ""
@@ -227,40 +299,4 @@
       });
     });
 
-    document.getElementById("sendPingBtn").addEventListener("click", async () => {
-      const targetKey = teacherDropdown.value;
-      const reason = document.getElementById("pingReason").value;
-      const newPingRef = push(ref(db, `pings/${targetKey}`));
-      await set(newPingRef, {
-        from: currentStudentEmail,
-        reason,
-        createdAt: Date.now()
-      });
-      const box = document.getElementById("pingStatus");
-      box.textContent = `Ping sent to ${allPresence[targetKey]?.name || targetKey} (${reason}).`;
-      box.classList.remove("hidden");
-    });
-
-    document.getElementById("logoutBtn").addEventListener("click", async () => {
-      await signOut(auth);
-      window.location.href = "./index.html";
-    });
-
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        window.location.href = "./index.html";
-        return;
-      }
-      currentStudentEmail = user.email;
-      document.getElementById("studentGreeting").textContent = `Welcome, ${user.email}`;
-
-      onValue(ref(db, "presence"), (snap) => {
-        allPresence = snap.val() || {};
-        render();
-      });
-    });
-
-    render();
-  </script>
-</body>
-</html>
+    document.getElementById("
