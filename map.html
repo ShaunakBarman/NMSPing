@@ -3,48 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NMSPing — Floor G Map</title>
+  <title>NMSPing — Floor Outliner</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 p-4">
   <div class="max-w-5xl mx-auto space-y-4">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="text-lg font-bold text-white">NMSPing — Room Outliner (Floor G)</h1>
+        <h1 class="text-lg font-bold text-white">NMSPing — Room Outliner</h1>
         <p class="text-xs text-slate-400">
-          1. Click corners of ONE room on the picture. 2. Click "Save Room". 3. Click "Copy Code" when done.
+          Pick a floor, click corners of ONE room on the picture, click "Save Room", then click "Copy Code".
         </p>
       </div>
-      <div class="flex gap-2">
-        <button id="undoPointBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer">
-          Undo Last Click
-        </button>
-        <button id="saveRoomBtn" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer">
-          Save Room
-        </button>
-        <button id="copyCodeBtn" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white cursor-pointer">
-          Copy Code
-        </button>
+      <div class="flex flex-wrap gap-2">
+        <button data-floor="g" class="floor-btn px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-semibold text-white cursor-pointer">Floor G</button>
+        <button data-floor="1" class="floor-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer">Floor 1</button>
+        <button data-floor="2" class="floor-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer">Floor 2</button>
+        <button id="undoPointBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer">Undo Click</button>
+        <button id="saveRoomBtn" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer">Save Room</button>
+        <button id="copyCodeBtn" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white cursor-pointer">Copy Code</button>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <!-- Left: Saved Rooms List -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h2 class="text-sm font-bold text-slate-300">Saved Rooms</h2>
+        <h2 id="roomsHeading" class="text-sm font-bold text-slate-300">Saved Rooms — Floor G</h2>
         <div id="roomList" class="space-y-2 text-sm text-slate-400">
-          No rooms outlined yet. Click corners of a room on the image!
+          No rooms outlined yet on this floor.
         </div>
       </div>
 
-      <!-- Right: Your Picture + Clickable Overlay -->
       <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-3">
         <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800 cursor-crosshair">
-          <!-- Your Floor G Picture -->
-          <image href="floor-G.png" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
-          <!-- Saved Rooms Layer -->
+          <image id="floorImg" href="floor-g.jpeg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
           <g id="savedLayer"></g>
-          <!-- Current Room Being Outlined -->
           <polygon id="draftPoly" points="" fill="rgba(59,130,246,0.35)" stroke="#60a5fa" stroke-width="3" />
           <g id="draftDots"></g>
         </svg>
@@ -53,14 +45,23 @@
   </div>
 
   <script>
+    const FLOORS = {
+      g: { label: "Floor G", img: "floor-g.jpeg" },
+      "1": { label: "Floor 1", img: "floor-1.jpeg" },
+      "2": { label: "Floor 2", img: "floor-2.jpeg" }
+    };
+
     const mapSvg = document.getElementById("mapSvg");
+    const floorImg = document.getElementById("floorImg");
     const savedLayer = document.getElementById("savedLayer");
     const draftPoly = document.getElementById("draftPoly");
     const draftDots = document.getElementById("draftDots");
     const roomList = document.getElementById("roomList");
+    const roomsHeading = document.getElementById("roomsHeading");
 
+    let currentFloor = "g";
     let currentPoints = [];
-    let savedRooms = [];
+    let savedByFloor = { g: [], "1": [], "2": [] };
 
     function getSvgCoords(evt) {
       const rect = mapSvg.getBoundingClientRect();
@@ -83,10 +84,12 @@
     }
 
     function renderSaved() {
+      const rooms = savedByFloor[currentFloor];
+      roomsHeading.textContent = `Saved Rooms — ${FLOORS[currentFloor].label}`;
       savedLayer.innerHTML = "";
-      roomList.innerHTML = savedRooms.length ? "" : "No rooms outlined yet. Click corners of a room on the image!";
+      roomList.innerHTML = rooms.length ? "" : "No rooms outlined yet on this floor.";
 
-      savedRooms.forEach((room, idx) => {
+      rooms.forEach((room, idx) => {
         const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
         poly.setAttribute("points", room.points);
         poly.setAttribute("fill", "rgba(16,185,129,0.28)");
@@ -95,24 +98,41 @@
         poly.style.cursor = "pointer";
         poly.addEventListener("click", (e) => {
           e.stopPropagation();
-          alert(`You tapped: ${room.name}`);
+          alert(`You tapped: ${room.name} (${FLOORS[currentFloor].label})`);
         });
         savedLayer.appendChild(poly);
 
-        const btn = document.createElement("div");
-        btn.className = "flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200";
-        btn.innerHTML = `<span>${room.name}</span><button class="text-xs text-red-400 hover:text-red-300 cursor-pointer">Delete</button>`;
-        btn.querySelector("button").addEventListener("click", () => {
-          savedRooms.splice(idx, 1);
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200";
+        row.innerHTML = `<span>${room.name}</span><button class="text-xs text-red-400 hover:text-red-300 cursor-pointer">Delete</button>`;
+        row.querySelector("button").addEventListener("click", () => {
+          rooms.splice(idx, 1);
           renderSaved();
         });
-        roomList.appendChild(btn);
+        roomList.appendChild(row);
       });
     }
 
+    function switchFloor(floorKey) {
+      currentFloor = floorKey;
+      currentPoints = [];
+      floorImg.setAttribute("href", FLOORS[floorKey].img);
+      document.querySelectorAll(".floor-btn").forEach(btn => {
+        const active = btn.dataset.floor === floorKey;
+        btn.className = active
+          ? "floor-btn px-3 py-1.5 rounded-lg bg-indigo-600 text-xs font-semibold text-white cursor-pointer"
+          : "floor-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold cursor-pointer";
+      });
+      renderDraft();
+      renderSaved();
+    }
+
+    document.querySelectorAll(".floor-btn").forEach(btn => {
+      btn.addEventListener("click", () => switchFloor(btn.dataset.floor));
+    });
+
     mapSvg.addEventListener("click", (evt) => {
-      const pt = getSvgCoords(evt);
-      currentPoints.push(pt);
+      currentPoints.push(getSvgCoords(evt));
       renderDraft();
     });
 
@@ -128,7 +148,7 @@
       }
       const name = prompt("What is this room called? (Example: Meeting Room or 9A)");
       if (!name) return;
-      savedRooms.push({
+      savedByFloor[currentFloor].push({
         name: name.trim(),
         points: currentPoints.map(p => `${p.x},${p.y}`).join(" ")
       });
@@ -138,9 +158,8 @@
     });
 
     document.getElementById("copyCodeBtn").addEventListener("click", async () => {
-      const json = JSON.stringify(savedRooms, null, 2);
-      await navigator.clipboard.writeText(json);
-      alert("Copied! Paste this into our chat so I can lock it into your app.");
+      await navigator.clipboard.writeText(JSON.stringify(savedByFloor, null, 2));
+      alert("Copied! Paste it into our chat and I'll build the real teacher floor & room picker.");
     });
   </script>
 </body>
