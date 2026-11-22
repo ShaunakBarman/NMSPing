@@ -495,10 +495,49 @@
         pingCount.textContent = String(entries.length);
 
         pingsList.innerHTML = entries.length ? "" : "No student pings yet.";
-        entries.forEach(([id, p]) => {
-          if (initialPingsLoaded && !knownPingIds.has(id)) {
+       entries.forEach(([id, p]) => {
+          const isSilentComing = p.type === "coming";
+
+          if (initialPingsLoaded && !knownPingIds.has(id) && !isSilentComing) {
             notifyTeacher(p);
           }
+          knownPingIds.add(id);
+
+          const timeStr = p.createdAt
+            ? new Date(p.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : "";
+
+          const row = document.createElement("div");
+          row.className = isSilentComing
+            ? "flex flex-wrap items-center justify-between gap-2 bg-sky-950/40 border border-sky-500/40 rounded-xl px-3 py-2"
+            : "flex flex-wrap items-center justify-between gap-2 bg-amber-950/40 border border-amber-500/40 rounded-xl px-3 py-2";
+
+          row.innerHTML = isSilentComing
+            ? `
+              <div>
+                <span class="font-bold text-sky-300">${p.from} is coming</span>
+                <span class="text-slate-300 ml-2">• ${p.reason}</span>
+                <span class="text-slate-400 ml-2">${timeStr}</span>
+              </div>
+              <button class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">
+                Dismiss
+              </button>
+            `
+            : `
+              <div>
+                <span class="font-bold text-white">${p.from}</span>
+                <span class="text-amber-200 ml-2">• ${p.reason}</span>
+                <span class="text-slate-400 ml-2">${timeStr}</span>
+              </div>
+              <button class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">
+                Dismiss
+              </button>
+            `;
+          row.querySelector("button").addEventListener("click", async () => {
+            await remove(ref(db, `pings/${teacherKey}/${id}`));
+          });
+          pingsList.appendChild(row);
+        });
           knownPingIds.add(id);
 
           const timeStr = p.createdAt
