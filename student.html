@@ -7,49 +7,52 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .room-poly {
-      fill: rgba(59, 130, 246, 0.22);
+      fill: rgba(59, 130, 246, 0.2);
       stroke: #60a5fa;
-      stroke-width: 2;
+      stroke-width: 1.5;
       cursor: pointer;
     }
-    .room-poly:hover {
-      fill: rgba(59, 130, 246, 0.38);
-    }
+    .room-poly:hover { fill: rgba(59, 130, 246, 0.36); }
   </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
+<body class="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-5">
   <div class="max-w-6xl mx-auto space-y-4">
-    <header class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+    <div id="campusBanner" class="hidden rounded-2xl bg-amber-500/20 border border-amber-400/50 px-4 py-2.5 text-xs font-semibold text-amber-200"></div>
+
+    <header class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <div class="text-xs font-semibold text-emerald-400 uppercase">Student Home</div>
-        <h1 id="studentGreeting" class="text-xl font-bold text-white">NMSPing Map</h1>
-        <p id="debugLine" class="text-xs text-slate-400 mt-0.5">Loading map...</p>
+        <h1 id="studentGreeting" class="nms-heading text-xl font-bold text-white">NMSPing Map</h1>
+        <p id="debugLine" class="nms-muted text-xs text-slate-400 mt-0.5">Loading map...</p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <button id="themeToggleBtn" type="button" class="nms-subcard px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 border border-slate-700 cursor-pointer">
+          🌙 Night Mode
+        </button>
         <button type="button" data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
         <button type="button" data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
         <button type="button" data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
-        <button type="button" id="logoutBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
+        <button type="button" data-floor="3" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 3</button>
+        <button id="logoutBtn" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
       </div>
     </header>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <aside class="space-y-4">
-        <!-- Ping Teacher Dropdown -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <h2 class="text-sm font-bold text-white">Ping a Teacher</h2>
+        <div class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h2 class="nms-heading text-sm font-bold text-white">Ping a Teacher</h2>
 
           <div>
-            <label for="teacherDropdown" class="block text-xs text-slate-400 mb-1">Select Teacher</label>
-            <select id="teacherDropdown" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white">
+            <label for="teacherDropdown" class="nms-muted block text-xs text-slate-400 mb-1">Select Teacher</label>
+            <select id="teacherDropdown" class="nms-input w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm">
               <option value="teach_nms_gemsed_com">teach_nms</option>
             </select>
           </div>
 
           <div>
-            <label for="pingReason" class="block text-xs text-slate-400 mb-1">Quick Tag</label>
-            <select id="pingReason" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white">
+            <label for="pingReason" class="nms-muted block text-xs text-slate-400 mb-1">Quick Tag</label>
+            <select id="pingReason" class="nms-input w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm">
               <option value="2-Min Question">2-Min Question</option>
               <option value="IA / Coursework Check">IA / Coursework Check</option>
               <option value="Form Signature">Form Signature</option>
@@ -67,20 +70,30 @@
           <div id="pingStatus" class="hidden text-xs rounded-xl bg-emerald-950/60 border border-emerald-800 p-3 text-emerald-200 space-y-1"></div>
         </div>
 
-        <!-- Visible Teachers List -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">On This Floor</h2>
-          <div id="visibleList" class="space-y-2 text-xs text-slate-400">No teachers shown on this floor.</div>
+        <div class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+          <h2 class="nms-muted text-xs font-bold uppercase tracking-wider text-slate-400">On This Floor</h2>
+          <div id="visibleList" class="nms-muted space-y-2 text-xs text-slate-400">No teachers shown on this floor.</div>
         </div>
       </aside>
 
-      <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-        <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800">
-          <image id="floorImg" href="./floor-g.jpg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
-          <g id="polyLayer"></g>
-          <g id="roomLabelLayer"></g>
-          <g id="beaconLayer"></g>
-        </svg>
+      <section class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 lg:col-span-2 space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span id="activeFloorLabel" class="text-xs font-bold uppercase tracking-wider text-emerald-400">Floor G</span>
+          <button id="rotateMapBtn" type="button" class="nms-subcard px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 border border-slate-700 cursor-pointer">
+            🔄 Rotate 90°
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <div id="mapFrame" class="nms-map-sheet min-w-[320px]">
+            <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800 touch-manipulation">
+              <image id="floorImg" href="./floor-g.jpg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
+              <g id="polyLayer"></g>
+              <g id="roomLabelLayer"></g>
+              <g id="beaconLayer"></g>
+            </svg>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -89,41 +102,19 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, onValue, get, push, set } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { firebaseConfig, DEFAULT_FLOORS, mergeFloorRooms, mountNmsOpeningSplash, initDayNightToggle } from "./nms-data.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
-      authDomain: "nmsping-a2909.firebaseapp.com",
-      projectId: "nmsping-a2909",
-      storageBucket: "nmsping-a2909.firebasestorage.app",
-      messagingSenderId: "321227369348",
-      appId: "1:321227369348:web:86e1a1b09b8333ced48bd1",
-      databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
-    };
+    mountNmsOpeningSplash();
+    initDayNightToggle("themeToggleBtn");
 
-    const FLOORS = {
-      g: {
-        img: "./floor-g.jpg",
-        rooms: [
-          { name: "132", points: "161,414 165,507 210,505 212,412" },
-          { name: "131", points: "161,388 161,303 208,301 208,388" },
-          { name: "134", points: "245,338 247,371 378,371 380,338" },
-          { name: "meet", points: "221,409 223,454 247,463 272,463 313,465 355,462 378,449 377,407" },
-          { name: "154", points: "382,344 380,371 380,393 433,391 453,371 556,370 559,390 561,337" },
-          { name: "524", points: "592,300 592,384 638,382 651,366 649,322 643,297" },
-          { name: "156", points: "596,407 596,497 645,495 654,425 642,405" },
-          { name: "608", points: "380,432 382,478 430,476 426,452 451,448 581,454 583,401 413,405" }
-        ]
-      },
-      "1": { img: "./floor-1.jpg", rooms: [] },
-      "2": { img: "./floor-2.jpg", rooms: [] }
-    };
-
-    const STUDENT_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes per student spam lock
-    const PIGGYBACK_WINDOW_MS = 5 * 60 * 1000; // 5 minutes silent join window
+    const STUDENT_COOLDOWN_MS = 3 * 60 * 1000;
+    const PIGGYBACK_WINDOW_MS = 5 * 60 * 1000;
 
     let currentFloor = "g";
+    let rotationDeg = 0;
     let allPresence = {};
     let allTimetables = {};
+    let overridesByFloor = { g: {}, "1": {}, "2": {}, "3": {} };
     let currentStudentEmail = "";
     let isLoggingOut = false;
 
@@ -135,6 +126,8 @@
     const visibleList = document.getElementById("visibleList");
     const teacherDropdown = document.getElementById("teacherDropdown");
     const sendPingBtn = document.getElementById("sendPingBtn");
+    const mapFrame = document.getElementById("mapFrame");
+    const activeFloorLabel = document.getElementById("activeFloorLabel");
 
     function centerOf(pointsStr) {
       const pts = pointsStr.trim().split(/\s+/).map(p => {
@@ -154,76 +147,35 @@
       const now = new Date();
       const day = String(now.getDay());
       const mins = now.getHours() * 60 + now.getMinutes();
-      return (slots || []).find(s =>
-        s.day === day &&
-        mins >= timeToMinutes(s.start) &&
-        mins <= timeToMinutes(s.end)
-      ) || null;
+      return (slots || []).find(s => s.day === day && mins >= timeToMinutes(s.start) && mins <= timeToMinutes(s.end)) || null;
     }
 
     function getResolvedTeachers() {
-      const keys = new Set([
-        "teach_nms_gemsed_com",
-        ...Object.keys(allPresence),
-        ...Object.keys(allTimetables)
-      ]);
-
+      const keys = new Set(["teach_nms_gemsed_com", ...Object.keys(allPresence), ...Object.keys(allTimetables)]);
       const resolved = [];
       keys.forEach((key) => {
         const p = allPresence[key] || {};
         const name = p.name || key.replace("_gemsed_com", "");
-
-        if (p.dnd) {
-          resolved.push({ key, name, hidden: true, dnd: true });
-          return;
-        }
-
-        if (p.mode === "confirmed" && p.room) {
-          resolved.push({
-            key,
-            name,
-            floor: p.floor || "g",
-            room: p.room,
-            mode: "confirmed"
-          });
-          return;
-        }
-
+        if (p.dnd) return resolved.push({ key, name, hidden: true, dnd: true });
+        if (p.mode === "confirmed" && p.room) return resolved.push({ key, name, floor: p.floor || "g", room: p.room, mode: "confirmed" });
         const slot = getActiveSlot(allTimetables[key]);
-        if (slot) {
-          resolved.push({
-            key,
-            name,
-            floor: slot.floor,
-            room: slot.room,
-            mode: "possible"
-          });
-          return;
-        }
-
-        if (p.mode === "possible" && p.room) {
-          resolved.push({
-            key,
-            name,
-            floor: p.floor || "g",
-            room: p.room,
-            mode: "possible"
-          });
-          return;
-        }
-
+        if (slot) return resolved.push({ key, name, floor: slot.floor, room: slot.room, mode: "possible" });
+        if (p.mode === "possible" && p.room) return resolved.push({ key, name, floor: p.floor || "g", room: p.room, mode: "possible" });
         resolved.push({ key, name, hidden: true });
       });
-
       return resolved;
+    }
+
+    function applyRotation() {
+      const scale = rotationDeg % 180 !== 0 ? " scale(0.76)" : "";
+      mapFrame.style.transformOrigin = "center center";
+      mapFrame.style.transform = `rotate(${rotationDeg}deg)${scale}`;
     }
 
     function updateCooldownUI() {
       const targetKey = teacherDropdown.value;
-      const storageKey = `nmsping_cd_${targetKey}`;
-      const until = Number(localStorage.getItem(storageKey) || 0);
+      const until = Number(localStorage.getItem(`nmsping_cd_${targetKey}`) || 0);
       const remaining = until - Date.now();
-
       if (remaining > 0) {
         sendPingBtn.disabled = true;
         const mins = Math.floor(remaining / 60000);
@@ -236,8 +188,10 @@
     }
 
     function render() {
-      const floor = FLOORS[currentFloor];
-      floorImg.setAttribute("href", floor.img);
+      const floorMeta = DEFAULT_FLOORS[currentFloor];
+      const rooms = mergeFloorRooms(currentFloor, overridesByFloor[currentFloor] || {});
+      activeFloorLabel.textContent = floorMeta.label;
+      floorImg.setAttribute("href", floorMeta.img);
 
       document.querySelectorAll(".floor-btn").forEach(btn => {
         btn.className = btn.dataset.floor === currentFloor
@@ -250,24 +204,25 @@
       beaconLayer.innerHTML = "";
 
       const roomCenters = {};
-      floor.rooms.forEach(room => {
-        roomCenters[room.name] = centerOf(room.points);
+      rooms.forEach(room => {
+        const c = centerOf(room.points);
+        roomCenters[room.name] = c;
 
         const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
         poly.setAttribute("points", room.points);
         poly.setAttribute("class", "room-poly");
         poly.addEventListener("click", () => {
-          debugLine.textContent = `Room ${room.name} (Floor ${currentFloor.toUpperCase()})`;
+          debugLine.textContent = `${room.name} (${floorMeta.label})`;
         });
         polyLayer.appendChild(poly);
 
         const lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
         lbl.setAttribute("x", c.x);
-        lbl.setAttribute("y", c.y + 4);
+        lbl.setAttribute("y", c.y + 3);
         lbl.setAttribute("text-anchor", "middle");
         lbl.setAttribute("fill", "#e2e8f0");
-        lbl.setAttribute("font-size", "12");
-        lbl.setAttribute("font-weight", "bold");
+        lbl.setAttribute("font-size", "9");
+        lbl.setAttribute("font-weight", "700");
         lbl.setAttribute("pointer-events", "none");
         lbl.textContent = room.name;
         roomLabelLayer.appendChild(lbl);
@@ -275,16 +230,13 @@
 
       const teachers = getResolvedTeachers();
       const prevSelected = teacherDropdown.value;
-      teacherDropdown.innerHTML = teachers
-        .map(t => `<option value="${t.key}">${t.name}</option>`)
-        .join("");
+      teacherDropdown.innerHTML = teachers.map(t => `<option value="${t.key}">${t.name}</option>`).join("");
       if (prevSelected) teacherDropdown.value = prevSelected;
 
       const shownTeachers = teachers.filter(t => !t.hidden && t.floor === currentFloor && t.room);
-
       visibleList.innerHTML = shownTeachers.length
         ? ""
-        : `<p class="text-slate-500">No active teachers shown on Floor ${currentFloor.toUpperCase()}.</p>`;
+        : `<p>No active teachers shown on ${floorMeta.label}.</p>`;
 
       shownTeachers.forEach(t => {
         const c = roomCenters[t.room] || { x: 400, y: 350 };
@@ -327,8 +279,8 @@
         beaconLayer.appendChild(g);
 
         const item = document.createElement("div");
-        item.className = "bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200";
-        item.textContent = `${tagLabel} — Room ${t.room}`;
+        item.className = "nms-subcard bg-slate-950 border border-slate-800 rounded-xl px-3 py-2";
+        item.textContent = `${tagLabel} — ${t.room}`;
         visibleList.appendChild(item);
       });
     }
@@ -340,8 +292,12 @@
       });
     });
 
-    teacherDropdown.addEventListener("change", updateCooldownUI);
+    document.getElementById("rotateMapBtn").addEventListener("click", () => {
+      rotationDeg = (rotationDeg + 90) % 360;
+      applyRotation();
+    });
 
+    teacherDropdown.addEventListener("change", updateCooldownUI);
     render();
 
     const app = initializeApp(firebaseConfig);
@@ -353,70 +309,34 @@
       const reason = document.getElementById("pingReason").value;
       const box = document.getElementById("pingStatus");
       const storageKey = `nmsping_cd_${targetKey}`;
-
-      // Block continuous clicking
-      if (Number(localStorage.getItem(storageKey) || 0) > Date.now()) {
-        updateCooldownUI();
-        return;
-      }
+      if (Number(localStorage.getItem(storageKey) || 0) > Date.now()) return updateCooldownUI();
 
       sendPingBtn.disabled = true;
       try {
         const now = Date.now();
         const resolved = getResolvedTeachers().find(t => t.key === targetKey);
-
-        // If teacher is in Do Not Disturb, do not ring them
         if (resolved?.dnd) {
-          box.innerHTML = `<div class="font-bold text-rose-300">Do Not Disturb is active</div><div>${resolved.name} is currently in a meeting and cannot be pinged right now.</div>`;
+          box.innerHTML = `<div class="font-bold text-rose-300">Do Not Disturb is active</div><div>${resolved.name} is currently in a meeting.</div>`;
           box.classList.remove("hidden");
-          updateCooldownUI();
-          return;
+          return updateCooldownUI();
         }
 
-        // Check if another student already pinged this teacher within the last 5 minutes
         const snap = await get(ref(db, `pings/${targetKey}`));
-        const existingPings = Object.values(snap.val() || {});
-        const recentPing = existingPings.find(p => (now - (p.createdAt || 0)) < PIGGYBACK_WINDOW_MS);
-
+        const recentPing = Object.values(snap.val() || {}).find(p => (now - (p.createdAt || 0)) < PIGGYBACK_WINDOW_MS);
         const newPingRef = push(ref(db, `pings/${targetKey}`));
 
         if (recentPing) {
-          // Silent piggyback: do NOT sound an alert on teacher screen; just log "coming"
-          await set(newPingRef, {
-            from: currentStudentEmail || "student@gemsed.com",
-            reason,
-            type: "coming",
-            createdAt: now
-          });
-
-          // Automatically jump map to teacher's floor if known
+          await set(newPingRef, { from: currentStudentEmail || "student@gemsed.com", reason, type: "coming", createdAt: now });
           if (resolved && !resolved.hidden && resolved.floor) {
             currentFloor = resolved.floor;
             render();
-            const statusType = resolved.mode === "possible" ? "Possible (Timetable)" : "Confirmed";
-            box.innerHTML = `
-              <div class="font-bold text-amber-300">Joined active ping (no extra alert sent)</div>
-              <div>${resolved.name} — <strong>Floor ${resolved.floor.toUpperCase()} • Room ${resolved.room}</strong> (${statusType})</div>
-            `;
+            box.innerHTML = `<div class="font-bold text-amber-300">Joined active ping (no extra alert sent)</div><div>${resolved.name} — <strong>Floor ${resolved.floor.toUpperCase()} • ${resolved.room}</strong></div>`;
           } else {
-            box.innerHTML = `
-              <div class="font-bold text-amber-300">Joined active ping (no extra alert sent)</div>
-              <div>Another student recently pinged ${targetKey.replace("_gemsed_com", "")}. Teacher notified that you are also coming.</div>
-            `;
+            box.innerHTML = `<div class="font-bold text-amber-300">Joined active ping (no extra alert sent)</div><div>Teacher notified that you are also coming.</div>`;
           }
         } else {
-          // First ping in window: triggers teacher sound/pop-up alert
-          await set(newPingRef, {
-            from: currentStudentEmail || "student@gemsed.com",
-            reason,
-            type: "alert",
-            createdAt: now
-          });
-
-          box.innerHTML = `
-            <div class="font-bold text-emerald-300">Ping sent to ${targetKey.replace("_gemsed_com", "")}!</div>
-            <div>Reason: ${reason}</div>
-          `;
+          await set(newPingRef, { from: currentStudentEmail || "student@gemsed.com", reason, type: "alert", createdAt: now });
+          box.innerHTML = `<div class="font-bold text-emerald-300">Ping sent!</div><div>Reason: ${reason}</div>`;
         }
 
         localStorage.setItem(storageKey, String(now + STUDENT_COOLDOWN_MS));
@@ -436,39 +356,40 @@
     });
 
     auth.authStateReady().then(() => {
-      if (!auth.currentUser) {
-        window.location.replace("./index.html");
-        return;
-      }
+      if (!auth.currentUser) return window.location.replace("./index.html");
       currentStudentEmail = auth.currentUser.email;
       document.getElementById("studentGreeting").textContent = `Welcome, ${auth.currentUser.email}`;
       debugLine.textContent = "Connected to NMSPing live map";
 
+      onValue(ref(db, "mapOverrides"), (snap) => {
+        const val = snap.val() || {};
+        overridesByFloor = { g: val.g || {}, "1": val["1"] || {}, "2": val["2"] || {}, "3": val["3"] || {} };
+        render();
+      });
+
+      onValue(ref(db, "announcement"), (snap) => {
+        const banner = document.getElementById("campusBanner");
+        const txt = snap.val()?.text || "";
+        banner.textContent = txt;
+        banner.classList.toggle("hidden", !txt);
+      });
+
       onValue(ref(db, "presence"), (snap) => {
         allPresence = snap.val() || {};
         render();
-      }, (err) => {
-        debugLine.textContent = `Database error (presence): ${err.message}`;
       });
 
       onValue(ref(db, "timetables"), (snap) => {
         allTimetables = snap.val() || {};
         render();
-      }, (err) => {
-        debugLine.textContent = `Database error (timetables): ${err.message}`;
       });
 
       onAuthStateChanged(auth, (user) => {
-        if (!user && !isLoggingOut) {
-          window.location.replace("./index.html");
-        }
+        if (!user && !isLoggingOut) window.location.replace("./index.html");
       });
     });
 
-    setInterval(() => {
-      render();
-      updateCooldownUI();
-    }, 1000);
+    setInterval(() => { render(); updateCooldownUI(); }, 1000);
   </script>
 </body>
 </html>
