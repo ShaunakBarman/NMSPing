@@ -1,4 +1,4 @@
-import { get, ref } from "[https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js](https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js)";
+import { get, ref } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
@@ -219,6 +219,32 @@ export function mergeFloorRooms(floorKey, overridesObj = {}) {
   });
 }
 
+export async function getUserRole(db, email) {
+  const clean = (email || "").trim().toLowerCase();
+  if (!clean.endsWith("@gemsed.com")) {
+    return { role: "blocked", reason: "Only @gemsed.com accounts are allowed." };
+  }
+  if (ADMIN_EMAILS.includes(clean)) {
+    return { role: "admin", dbError: null };
+  }
+  if (TEACHER_EMAILS.includes(clean)) {
+    return { role: "teacher", dbError: null };
+  }
+  try {
+    const userKey = clean.replace(/[^a-z0-9]/g, "_");
+    const snap = await get(ref(db, `users/${userKey}`));
+    if (snap.exists()) {
+      const role = snap.val()?.role;
+      if (role === "admin") return { role: "admin", dbError: null };
+      if (role === "teacher") return { role: "teacher", dbError: null };
+      if (role === "student") return { role: "student", dbError: null };
+    }
+    return { role: "student", dbError: null };
+  } catch (err) {
+    return { role: "student", dbError: err?.message || "Database read error" };
+  }
+}
+
 export function injectOpeningAndThemeStyles() {
   if (document.getElementById("nms-opening-style")) return;
   const style = document.createElement("style");
@@ -388,20 +414,8 @@ export async function attachAdminBackButtonIfAdmin(auth, db, containerId, curren
   const container = document.getElementById(containerId);
   if (!container || !auth.currentUser || currentPage === "admin") return;
 
-  const email = (auth.currentUser.email || "").trim().toLowerCase();
-  let isAdmin = ADMIN_EMAILS.includes(email);
-
-  if (!isAdmin) {
-    try {
-      const key = email.replace(/[^a-z0-9]/g, "_");
-      const snap = await get(ref(db, `users/${key}`));
-      if (snap.exists() && snap.val()?.role === "admin") {
-        isAdmin = true;
-      }
-    } catch (_) {}
-  }
-
-  if (isAdmin && !document.getElementById("backToAdminBtn")) {
+  const { role } = await getUserRole(db, auth.currentUser.email);
+  if (role === "admin" && !document.getElementById("backToAdminBtn")) {
     const link = document.createElement("a");
     link.id = "backToAdminBtn";
     link.href = "./admin.html";
