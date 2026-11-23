@@ -3,115 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NMSPing — Teacher Location & Pings</title>
+  <title>NMSPing — Teacher Console</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     .room-poly {
-      fill: rgba(59, 130, 246, 0.2);
+      fill: rgba(59, 130, 246, 0.22);
       stroke: #93c5fd;
       stroke-width: 2;
       cursor: pointer;
     }
-    .room-poly:hover { fill: rgba(59, 130, 246, 0.38); }
-    .room-poly.active { fill: rgba(16, 185, 129, 0.35); stroke: #34d399; stroke-width: 3; }
+    .room-poly:hover { fill: rgba(59, 130, 246, 0.4); }
+    .room-poly.active { fill: rgba(16, 185, 129, 0.36); stroke: #34d399; stroke-width: 3; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
+<body class="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-5">
   <div class="max-w-6xl mx-auto space-y-4">
-    <!-- Top Header -->
-    <header class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+    <div id="campusBanner" class="hidden rounded-2xl bg-amber-500/20 border border-amber-400/50 px-4 py-2.5 text-xs font-semibold text-amber-200"></div>
+
+    <header class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <div class="text-xs font-semibold text-emerald-400 uppercase">Teacher Console</div>
-        <h1 id="teacherTitle" class="text-xl font-bold text-white">teach_nms</h1>
-        <p id="clockText" class="text-xs text-slate-400 mt-0.5"></p>
+        <h1 id="teacherTitle" class="nms-heading text-xl font-bold text-white">teach_nms</h1>
+        <p id="clockText" class="nms-muted text-xs text-slate-400 mt-0.5"></p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <button id="enableNotifBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500/20 border border-amber-400/50 text-amber-200 hover:bg-amber-500/30 cursor-pointer">
+        <button id="themeToggleBtn" type="button" class="nms-subcard px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 border border-slate-700 cursor-pointer">
+          🌙 Night Mode
+        </button>
+        <button id="enableNotifBtn" type="button" class="px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/20 border border-amber-400/50 text-amber-200 cursor-pointer">
           Enable Ping Alerts
         </button>
-        <button data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
-        <button data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
-        <button data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
-        <button id="logoutBtn" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
+        <button type="button" data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
+        <button type="button" data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
+        <button type="button" data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
+        <button id="logoutBtn" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Log Out</button>
       </div>
     </header>
 
-    <!-- Live Incoming Student Pings Box -->
-    <section id="pingsSection" class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+    <section class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
       <div class="flex items-center justify-between">
-        <h2 class="text-xs font-bold uppercase tracking-wider text-amber-300">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400">
           Incoming Student Pings (<span id="pingCount">0</span>)
         </h2>
-        <button id="clearAllPingsBtn" class="text-xs text-slate-400 hover:text-white cursor-pointer">Clear All</button>
+        <button id="clearAllPingsBtn" type="button" class="nms-muted text-xs text-slate-400 hover:text-white cursor-pointer">Clear All</button>
       </div>
-      <div id="pingsList" class="space-y-2 text-xs text-slate-400">
-        No student pings yet.
-      </div>
+      <div id="pingsList" class="nms-muted space-y-2 text-xs text-slate-400">No student pings yet.</div>
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <aside class="space-y-4">
-        <!-- Main Status Buttons -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <div class="text-xs text-slate-400">
+        <div class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div class="nms-muted text-xs text-slate-400">
             Selected Room: <strong id="selectedRoomLabel" class="text-emerald-400">None</strong>
           </div>
 
-          <button
-            id="confirmRoomBtn"
-            class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
-          >
+          <button id="confirmRoomBtn" type="button" class="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer">
             Confirm Selected Room
           </button>
 
-          <button
-            id="byTimetableBtn"
-            class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
-          >
+          <button id="byTimetableBtn" type="button" class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer">
             According to Timetable (Confirm)
           </button>
 
-          <button
-            id="autoModeBtn"
-            class="w-full rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 px-4 text-xs transition cursor-pointer"
-          >
+          <button id="autoModeBtn" type="button" class="nms-subcard w-full rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 px-4 text-xs cursor-pointer">
             Resume Auto-Timetable Mode
           </button>
 
-          <button
-            id="dndBtn"
-            class="w-full rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-4 text-sm transition cursor-pointer"
-          >
+          <button id="dndBtn" type="button" class="w-full rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer">
             Do Not Disturb (Remove from Map)
           </button>
 
-          <div id="statusBanner" class="text-xs rounded-xl bg-slate-950 border border-slate-800 p-3 text-slate-300">
+          <div id="statusBanner" class="nms-subcard text-xs rounded-xl bg-slate-950 border border-slate-800 p-3">
             Status: Auto-timetable checking every 10s...
           </div>
         </div>
 
-        <!-- Timetable Upload & Current Time Slots -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <h2 class="text-sm font-bold text-white">Timetable Photo & Auto Slots</h2>
+        <div class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <h2 class="nms-heading text-sm font-bold text-white">Timetable Photo & Auto Slots</h2>
 
-          <input
-            id="timetablePhoto"
-            type="file"
-            accept="image/*"
-            class="block w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 cursor-pointer"
-          />
-          <p id="ocrNote" class="text-[11px] text-slate-400 hidden"></p>
-          <textarea
-            id="ocrRaw"
-            rows="2"
-            placeholder="Scanned timetable text..."
-            class="hidden w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-[11px] text-slate-300"
-          ></textarea>
+          <input id="timetablePhoto" type="file" accept="image/*" class="block w-full text-xs text-slate-400 cursor-pointer" />
+          <p id="ocrNote" class="nms-muted text-[11px] text-slate-400 hidden"></p>
+          <textarea id="ocrRaw" rows="2" class="nms-input hidden w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-[11px]"></textarea>
 
           <div class="grid grid-cols-2 gap-2">
-            <select id="slotDay" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+            <select id="slotDay" class="nms-input rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs">
               <option value="0">Sunday</option>
               <option value="1">Monday</option>
               <option value="2">Tuesday</option>
@@ -120,39 +97,44 @@
               <option value="5">Friday</option>
               <option value="6">Saturday</option>
             </select>
-            <select id="slotFloor" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white">
+            <select id="slotFloor" class="nms-input rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs">
               <option value="g">Floor G</option>
               <option value="1">Floor 1</option>
               <option value="2">Floor 2</option>
             </select>
-            <input id="slotStart" type="time" value="14:00" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
-            <input id="slotEnd" type="time" value="15:00" class="rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-white" />
+            <input id="slotStart" type="time" value="14:00" class="nms-input rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs" />
+            <input id="slotEnd" type="time" value="15:00" class="nms-input rounded-lg bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs" />
           </div>
 
-          <input
-            id="slotRoom"
-            type="text"
-            placeholder="Room name (e.g. 134 or meet)"
-            class="w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-white"
-          />
+          <input id="slotRoom" type="text" placeholder="Room name (e.g. Canteen or 280)" class="nms-input w-full rounded-lg bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs" />
 
-          <button
-            id="addSlotBtn"
-            class="w-full rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 font-semibold py-2 px-3 text-xs cursor-pointer"
-          >
+          <button id="addSlotBtn" type="button" class="w-full rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-300 font-semibold py-2 px-3 text-xs cursor-pointer">
             Save Timetable Slot
           </button>
 
-          <div id="slotList" class="space-y-1.5 text-xs text-slate-400"></div>
+          <div id="slotList" class="nms-muted space-y-1.5 text-xs text-slate-400"></div>
         </div>
       </aside>
 
-      <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-        <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800">
-          <image id="floorImg" href="floor-g.jpeg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
-          <g id="polyLayer"></g>
-          <g id="labelLayer"></g>
-        </svg>
+      <section class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 lg:col-span-2 space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span id="activeFloorLabel" class="text-xs font-bold uppercase tracking-wider text-emerald-400">Floor G</span>
+          <div class="flex items-center gap-2">
+            <button id="rotateMapBtn" type="button" class="nms-subcard px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 border border-slate-700 cursor-pointer">
+              🔄 Rotate 90°
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <div id="mapFrame" class="nms-map-sheet min-w-[320px]">
+            <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800 touch-manipulation">
+              <image id="floorImg" href="./floor-g.jpg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
+              <g id="polyLayer"></g>
+              <g id="labelLayer"></g>
+            </svg>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -161,48 +143,24 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { firebaseConfig, DEFAULT_FLOORS, mergeFloorRooms, mountNmsOpeningSplash, initDayNightToggle } from "./nms-data.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
-      authDomain: "nmsping-a2909.firebaseapp.com",
-      projectId: "nmsping-a2909",
-      storageBucket: "nmsping-a2909.firebasestorage.app",
-      messagingSenderId: "321227369348",
-      appId: "1:321227369348:web:86e1a1b09b8333ced48bd1",
-      databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
-    };
-
-    const FLOORS = {
-      g: {
-        label: "Floor G",
-        img: "floor-g.jpeg",
-        rooms: [
-          { name: "132", points: "161,414 165,507 210,505 212,412" },
-          { name: "131", points: "161,388 161,303 208,301 208,388" },
-          { name: "134", points: "245,338 247,371 378,371 380,338" },
-          { name: "meet", points: "221,409 223,454 247,463 272,463 313,465 355,462 378,449 377,407" },
-          { name: "154", points: "382,344 380,371 380,393 433,391 453,371 556,370 559,390 561,337" },
-          { name: "524", points: "592,300 592,384 638,382 651,366 649,322 643,297" },
-          { name: "156", points: "596,407 596,497 645,495 654,425 642,405" },
-          { name: "608", points: "380,432 382,478 430,476 426,452 451,448 581,454 583,401 413,405" }
-        ]
-      },
-      "1": { label: "Floor 1", img: "floor-1.jpeg", rooms: [] },
-      "2": { label: "Floor 2", img: "floor-2.jpeg", rooms: [] }
-    };
+    mountNmsOpeningSplash();
+    initDayNightToggle("themeToggleBtn");
 
     const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    let teacherKey = "teach_nms";
+    let teacherKey = "teach_nms_gemsed_com";
     let displayName = "teach_nms";
     let currentFloor = "g";
     let selectedRoom = null;
+    let rotationDeg = 0;
     let slots = [];
     let currentState = {};
+    let overridesByFloor = { g: {}, "1": {}, "2": {} };
     let isLoggingOut = false;
     let knownPingIds = new Set();
     let initialPingsLoaded = false;
@@ -217,8 +175,9 @@
     const slotList = document.getElementById("slotList");
     const pingsList = document.getElementById("pingsList");
     const pingCount = document.getElementById("pingCount");
+    const mapFrame = document.getElementById("mapFrame");
+    const activeFloorLabel = document.getElementById("activeFloorLabel");
 
-    // Pre-select today's day in the slot dropdown for convenience
     document.getElementById("slotDay").value = String(new Date().getDay());
 
     function playChime() {
@@ -241,9 +200,7 @@
     function notifyTeacher(ping) {
       playChime();
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`NMSPing from ${ping.from}`, {
-          body: `${ping.reason} — Open NMSPing to confirm your room.`
-        });
+        new Notification(`NMSPing from ${ping.from}`, { body: `${ping.reason}` });
       }
     }
 
@@ -265,11 +222,7 @@
       const now = new Date();
       const day = String(now.getDay());
       const mins = now.getHours() * 60 + now.getMinutes();
-      return slots.find(s =>
-        s.day === day &&
-        mins >= timeToMinutes(s.start) &&
-        mins <= timeToMinutes(s.end)
-      ) || null;
+      return slots.find(s => s.day === day && mins >= timeToMinutes(s.start) && mins <= timeToMinutes(s.end)) || null;
     }
 
     function updateClock() {
@@ -277,9 +230,18 @@
       clockText.textContent = `Current Time: ${DAYS[now.getDay()]} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     }
 
+    function applyRotation() {
+      const scale = rotationDeg % 180 !== 0 ? " scale(0.76)" : "";
+      mapFrame.style.transformOrigin = "center center";
+      mapFrame.style.transform = `rotate(${rotationDeg}deg)${scale}`;
+    }
+
     function renderMap() {
-      const floor = FLOORS[currentFloor];
-      floorImg.setAttribute("href", floor.img);
+      const floorMeta = DEFAULT_FLOORS[currentFloor];
+      const rooms = mergeFloorRooms(currentFloor, overridesByFloor[currentFloor] || {});
+      activeFloorLabel.textContent = `${floorMeta.label} (${rooms.length} zones)`;
+      floorImg.setAttribute("href", floorMeta.img);
+
       document.querySelectorAll(".floor-btn").forEach(btn => {
         btn.className = btn.dataset.floor === currentFloor
           ? "floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer"
@@ -289,25 +251,25 @@
       polyLayer.innerHTML = "";
       labelLayer.innerHTML = "";
 
-      floor.rooms.forEach(room => {
+      rooms.forEach(room => {
         const c = centerOf(room.points);
         const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
         poly.setAttribute("points", room.points);
         poly.setAttribute("class", selectedRoom === room.name ? "room-poly active" : "room-poly");
         poly.addEventListener("click", () => {
           selectedRoom = room.name;
-          selectedRoomLabel.textContent = `${floor.label} • ${room.name}`;
+          selectedRoomLabel.textContent = `${floorMeta.label} • ${room.name}`;
           renderMap();
         });
         polyLayer.appendChild(poly);
 
         const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
         txt.setAttribute("x", c.x);
-        txt.setAttribute("y", c.y + 4);
+        txt.setAttribute("y", c.y + 3);
         txt.setAttribute("text-anchor", "middle");
-        txt.setAttribute("fill", "#fff");
-        txt.setAttribute("font-size", "12");
-        txt.setAttribute("font-weight", "bold");
+        txt.setAttribute("fill", "#ffffff");
+        txt.setAttribute("font-size", "9");
+        txt.setAttribute("font-weight", "700");
         txt.setAttribute("pointer-events", "none");
         txt.textContent = room.name;
         labelLayer.appendChild(txt);
@@ -315,11 +277,11 @@
     }
 
     function renderSlots() {
-      slotList.innerHTML = slots.length ? "" : "<p class='text-slate-500'>No timetable slots saved yet.</p>";
+      slotList.innerHTML = slots.length ? "" : "<p>No timetable slots saved yet.</p>";
       slots.forEach((s, i) => {
         const div = document.createElement("div");
-        div.className = "flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5";
-        div.innerHTML = `<span>${DAYS[Number(s.day)]} ${s.start}-${s.end} • Floor ${s.floor.toUpperCase()} ${s.room}</span><button class="text-red-400 cursor-pointer">✕</button>`;
+        div.className = "nms-subcard flex items-center justify-between bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5";
+        div.innerHTML = `<span>${DAYS[Number(s.day)]} ${s.start}-${s.end} • Floor ${s.floor.toUpperCase()} ${s.room}</span><button type="button" class="text-red-400 cursor-pointer">✕</button>`;
         div.querySelector("button").addEventListener("click", async () => {
           slots.splice(i, 1);
           await set(ref(db, `timetables/${teacherKey}`), slots);
@@ -330,7 +292,6 @@
 
     async function checkAutoTimetable() {
       if (!auth.currentUser || !teacherKey) return;
-      // Do not overwrite manual DND or manual room confirmation
       if (currentState.dnd || currentState.confirmed) return;
 
       const match = findMatchingSlot();
@@ -359,16 +320,15 @@
       }
     }
 
+    document.getElementById("rotateMapBtn").addEventListener("click", () => {
+      rotationDeg = (rotationDeg + 90) % 360;
+      applyRotation();
+    });
+
     document.getElementById("enableNotifBtn").addEventListener("click", async () => {
-      if (!("Notification" in window)) {
-        alert("This browser does not support desktop pop-up alerts—in-page alerts and sound will still work!");
-        return;
-      }
+      if (!("Notification" in window)) return alert("In-page chime and alerts are active.");
       const perm = await Notification.requestPermission();
-      if (perm === "granted") {
-        playChime();
-        alert("Ping alerts enabled!");
-      }
+      if (perm === "granted") { playChime(); alert("Ping alerts enabled!"); }
     });
 
     document.querySelectorAll(".floor-btn").forEach(btn => {
@@ -381,70 +341,38 @@
     });
 
     document.getElementById("confirmRoomBtn").addEventListener("click", async () => {
-      if (!selectedRoom) {
-        alert("Tap a room on the map first!");
-        return;
-      }
+      if (!selectedRoom) return alert("Tap a room on the map first!");
       await set(ref(db, `presence/${teacherKey}`), {
-        name: displayName,
-        floor: currentFloor,
-        room: selectedRoom,
-        mode: "confirmed",
-        confirmed: true,
-        dnd: false,
-        updatedAt: Date.now()
+        name: displayName, floor: currentFloor, room: selectedRoom, mode: "confirmed", confirmed: true, dnd: false, updatedAt: Date.now()
       });
     });
 
     document.getElementById("byTimetableBtn").addEventListener("click", async () => {
       const match = findMatchingSlot();
-      if (!match) {
-        alert("No timetable slot matches the current day and time yet. Add one below or tap a room on the map.");
-        return;
-      }
+      if (!match) return alert("No timetable slot matches the current day and time.");
       currentFloor = match.floor;
       selectedRoom = match.room;
       selectedRoomLabel.textContent = `Floor ${match.floor.toUpperCase()} • ${match.room}`;
       await set(ref(db, `presence/${teacherKey}`), {
-        name: displayName,
-        floor: match.floor,
-        room: match.room,
-        mode: "confirmed",
-        confirmed: true,
-        dnd: false,
-        updatedAt: Date.now()
+        name: displayName, floor: match.floor, room: match.room, mode: "confirmed", confirmed: true, dnd: false, updatedAt: Date.now()
       });
       renderMap();
     });
 
     document.getElementById("autoModeBtn").addEventListener("click", async () => {
       await set(ref(db, `presence/${teacherKey}`), {
-        name: displayName,
-        floor: currentFloor,
-        room: "",
-        mode: "off",
-        confirmed: false,
-        dnd: false,
-        updatedAt: Date.now()
+        name: displayName, floor: currentFloor, room: "", mode: "off", confirmed: false, dnd: false, updatedAt: Date.now()
       });
       await checkAutoTimetable();
     });
 
     document.getElementById("dndBtn").addEventListener("click", async () => {
       await set(ref(db, `presence/${teacherKey}`), {
-        name: displayName,
-        floor: currentFloor,
-        room: "",
-        mode: "dnd",
-        confirmed: false,
-        dnd: true,
-        updatedAt: Date.now()
+        name: displayName, floor: currentFloor, room: "", mode: "dnd", confirmed: false, dnd: true, updatedAt: Date.now()
       });
     });
 
-    document.getElementById("clearAllPingsBtn").addEventListener("click", async () => {
-      await remove(ref(db, `pings/${teacherKey}`));
-    });
+    document.getElementById("clearAllPingsBtn").addEventListener("click", () => remove(ref(db, `pings/${teacherKey}`)));
 
     document.getElementById("addSlotBtn").addEventListener("click", async () => {
       const room = document.getElementById("slotRoom").value.trim();
@@ -470,7 +398,7 @@
       ocrNote.textContent = "Reading timetable image...";
       const { data } = await Tesseract.recognize(file, "eng");
       ocrRaw.value = (data.text || "").trim();
-      ocrNote.textContent = "Text extracted below—add your matching day/time/room slot.";
+      ocrNote.textContent = "Text extracted—add your matching day/time/room slot.";
     });
 
     document.getElementById("logoutBtn").addEventListener("click", async () => {
@@ -479,86 +407,52 @@
       window.location.replace("./index.html");
     });
 
-    await auth.authStateReady();
-    if (!auth.currentUser) {
-      window.location.replace("./index.html");
-    } else {
+    renderMap();
+    updateClock();
+
+    auth.authStateReady().then(() => {
+      if (!auth.currentUser) return window.location.replace("./index.html");
       const email = (auth.currentUser.email || "").toLowerCase();
       displayName = email.split("@")[0];
       teacherKey = email.replace(/[^a-z0-9]/g, "_");
       teacherTitle.textContent = displayName;
 
-      // Listen for incoming student pings in real time
+      onValue(ref(db, "mapOverrides"), (snap) => {
+        const val = snap.val() || {};
+        overridesByFloor = { g: val.g || {}, "1": val["1"] || {}, "2": val["2"] || {} };
+        renderMap();
+      });
+
+      onValue(ref(db, "announcement"), (snap) => {
+        const banner = document.getElementById("campusBanner");
+        const txt = snap.val()?.text || "";
+        banner.textContent = txt;
+        banner.classList.toggle("hidden", !txt);
+      });
+
       onValue(ref(db, `pings/${teacherKey}`), (snap) => {
         const val = snap.val() || {};
         const entries = Object.entries(val).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
         pingCount.textContent = String(entries.length);
-
         pingsList.innerHTML = entries.length ? "" : "No student pings yet.";
-       entries.forEach(([id, p]) => {
+        entries.forEach(([id, p]) => {
           const isSilentComing = p.type === "coming";
-
-          if (initialPingsLoaded && !knownPingIds.has(id) && !isSilentComing) {
-            notifyTeacher(p);
-          }
+          if (initialPingsLoaded && !knownPingIds.has(id) && !isSilentComing) notifyTeacher(p);
           knownPingIds.add(id);
-
-          const timeStr = p.createdAt
-            ? new Date(p.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : "";
-
+          const timeStr = p.createdAt ? new Date(p.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
           const row = document.createElement("div");
           row.className = isSilentComing
-            ? "flex flex-wrap items-center justify-between gap-2 bg-sky-950/40 border border-sky-500/40 rounded-xl px-3 py-2"
-            : "flex flex-wrap items-center justify-between gap-2 bg-amber-950/40 border border-amber-500/40 rounded-xl px-3 py-2";
-
-          row.innerHTML = isSilentComing
-            ? `
-              <div>
-                <span class="font-bold text-sky-300">${p.from} is coming</span>
-                <span class="text-slate-300 ml-2">• ${p.reason}</span>
-                <span class="text-slate-400 ml-2">${timeStr}</span>
-              </div>
-              <button class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">
-                Dismiss
-              </button>
-            `
-            : `
-              <div>
-                <span class="font-bold text-white">${p.from}</span>
-                <span class="text-amber-200 ml-2">• ${p.reason}</span>
-                <span class="text-slate-400 ml-2">${timeStr}</span>
-              </div>
-              <button class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">
-                Dismiss
-              </button>
-            `;
-          row.querySelector("button").addEventListener("click", async () => {
-            await remove(ref(db, `pings/${teacherKey}/${id}`));
-          });
-          pingsList.appendChild(row);
-        });
-          knownPingIds.add(id);
-
-          const timeStr = p.createdAt
-            ? new Date(p.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : "";
-
-          const row = document.createElement("div");
-          row.className = "flex flex-wrap items-center justify-between gap-2 bg-amber-950/40 border border-amber-500/40 rounded-xl px-3 py-2";
+            ? "flex flex-wrap items-center justify-between gap-2 bg-sky-950/50 border border-sky-500/40 rounded-xl px-3 py-2 text-slate-200"
+            : "flex flex-wrap items-center justify-between gap-2 bg-amber-950/50 border border-amber-500/40 rounded-xl px-3 py-2 text-slate-200";
           row.innerHTML = `
             <div>
-              <span class="font-bold text-white">${p.from}</span>
-              <span class="text-amber-200 ml-2">• ${p.reason}</span>
+              <span class="font-bold text-white">${p.from}${isSilentComing ? " is coming" : ""}</span>
+              <span class="ml-2">• ${p.reason}</span>
               <span class="text-slate-400 ml-2">${timeStr}</span>
             </div>
-            <button class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">
-              Dismiss
-            </button>
+            <button type="button" class="text-xs px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer">Dismiss</button>
           `;
-          row.querySelector("button").addEventListener("click", async () => {
-            await remove(ref(db, `pings/${teacherKey}/${id}`));
-          });
+          row.querySelector("button").addEventListener("click", () => remove(ref(db, `pings/${teacherKey}/${id}`)));
           pingsList.appendChild(row);
         });
         initialPingsLoaded = true;
@@ -584,18 +478,11 @@
       });
 
       onAuthStateChanged(auth, (user) => {
-        if (!user && !isLoggingOut) {
-          window.location.replace("./index.html");
-        }
+        if (!user && !isLoggingOut) window.location.replace("./index.html");
       });
-    }
+    });
 
-    updateClock();
-    setInterval(() => {
-      updateClock();
-      checkAutoTimetable();
-    }, 10000);
-    renderMap();
+    setInterval(() => { updateClock(); checkAutoTimetable(); }, 10000);
   </script>
 </body>
 </html>
