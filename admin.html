@@ -43,6 +43,7 @@
             <option value="g">Floor G</option>
             <option value="1">Floor 1</option>
             <option value="2">Floor 2</option>
+            <option value="3">Floor 3</option>
           </select>
         </div>
 
@@ -139,7 +140,7 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    let overridesByFloor = { g: {}, "1": {}, "2": {} };
+    let overridesByFloor = { g: {}, "1": {}, "2": {}, "3": {} };
     let isLoggingOut = false;
 
     const editFloorSelect = document.getElementById("editFloorSelect");
