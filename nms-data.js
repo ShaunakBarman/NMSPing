@@ -192,6 +192,11 @@ export const DEFAULT_FLOORS = {
       { id: "2-55", name: "268", points: "508,265 565,267 565,253 508,254" },
       { id: "2-56", name: "278?", points: "431,253 435,267 488,265 488,253" }
     ]
+  },
+  "3": {
+    label: "Floor 3",
+    img: "./floor-3.jpg",
+    rooms: []
   }
 };
 
