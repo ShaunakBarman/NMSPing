@@ -7,17 +7,22 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .admin-poly {
-      fill: rgba(59, 130, 246, 0.22);
-      stroke: #93c5fd;
+      fill: rgba(16, 185, 129, 0.22);
+      stroke: #34d399;
       stroke-width: 2;
       cursor: pointer;
     }
-    .admin-poly:hover { fill: rgba(59, 130, 246, 0.42); }
-    .admin-poly.selected { fill: rgba(245, 158, 11, 0.36); stroke: #fbbf24; stroke-width: 3; }
+    .admin-poly:hover { fill: rgba(16, 185, 129, 0.4); }
+    .admin-poly.selected { fill: rgba(5, 150, 105, 0.45); stroke: #a7f3d0; stroke-width: 3; }
   </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-5">
-  <div class="max-w-6xl mx-auto space-y-5">
+  <div id="adminGuardNotice" class="max-w-lg mx-auto mt-16 bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-2">
+    <p class="text-sm font-semibold text-amber-400">Verifying Admin Access...</p>
+    <p class="text-xs text-slate-400">Checking your @gemsed.com account permissions.</p>
+  </div>
+
+  <div id="adminApp" class="hidden max-w-6xl mx-auto space-y-5">
     <header class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
       <div>
         <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Admin Console • Full Control</span>
@@ -25,7 +30,7 @@
         <p id="adminEmailDisplay" class="nms-muted text-xs text-slate-400"></p>
       </div>
 
-      <div id="adminHeaderActions" class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <button id="themeToggleBtn" type="button" class="nms-subcard px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 border border-slate-700 cursor-pointer">
           🌙 Night Mode
         </button>
@@ -44,7 +49,6 @@
       </div>
     </header>
 
-    <!-- Click-on-Map Room Name Editor -->
     <section class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -105,12 +109,11 @@
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- Users & Roles -->
       <section class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
         <div>
           <h2 class="nms-heading text-base font-bold text-white">Add / Manage @gemsed.com Users</h2>
           <p class="nms-muted text-xs text-slate-400">
-            Saves user email & role in Firebase Realtime Database. (Also add the user's password in Firebase Auth &gt; Users.)
+            Saves user email &amp; role in Firebase Realtime Database. (Also add the user's password in Firebase Auth &gt; Users.)
           </p>
         </div>
 
@@ -138,9 +141,8 @@
         <div id="userDirectoryList" class="nms-muted max-h-48 overflow-y-auto space-y-1.5 text-xs text-slate-300"></div>
       </section>
 
-      <!-- Campus Broadcast & Reset -->
       <section class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <h2 class="nms-heading text-base font-bold text-white">Campus Banner & Live Data Controls</h2>
+        <h2 class="nms-heading text-base font-bold text-white">Campus Banner &amp; Live Data Controls</h2>
         <input
           id="bannerInput"
           type="text"
@@ -170,6 +172,7 @@
       firebaseConfig,
       DEFAULT_FLOORS,
       mergeFloorRooms,
+      getUserRole,
       mountNmsOpeningSplash,
       initDayNightToggle,
       setupRotatableMapFrame
@@ -187,6 +190,8 @@
     let selectedRoomId = null;
     let isLoggingOut = false;
 
+    const adminGuardNotice = document.getElementById("adminGuardNotice");
+    const adminApp = document.getElementById("adminApp");
     const editFloorSelect = document.getElementById("editFloorSelect");
     const roomPickSelect = document.getElementById("roomPickSelect");
     const newRoomNameInput = document.getElementById("newRoomNameInput");
@@ -318,12 +323,7 @@
       window.location.replace("./index.html");
     });
 
-    renderAdminMapAndList();
-
-    auth.authStateReady().then(() => {
-      if (!auth.currentUser) return window.location.replace("./index.html");
-      document.getElementById("adminEmailDisplay").textContent = `Signed in as ${auth.currentUser.email}`;
-
+    function startAdminListeners() {
       onValue(ref(db, "mapOverrides"), (snap) => {
         const val = snap.val() || {};
         overridesByFloor = { g: val.g || {}, "1": val["1"] || {}, "2": val["2"] || {}, "3": val["3"] || {} };
@@ -345,6 +345,24 @@
       onValue(ref(db, "announcement"), (snap) => {
         document.getElementById("bannerInput").value = snap.val()?.text || "";
       });
+    }
+
+    auth.authStateReady().then(async () => {
+      if (!auth.currentUser) {
+        window.location.replace("./index.html");
+        return;
+      }
+      const { role } = await getUserRole(db, auth.currentUser.email);
+      if (role !== "admin") {
+        window.location.replace(role === "teacher" ? "./teacher.html" : "./student.html");
+        return;
+      }
+
+      adminGuardNotice.classList.add("hidden");
+      adminApp.classList.remove("hidden");
+      document.getElementById("adminEmailDisplay").textContent = `Signed in as ${auth.currentUser.email}`;
+      renderAdminMapAndList();
+      startAdminListeners();
 
       onAuthStateChanged(auth, (user) => {
         if (!user && !isLoggingOut) window.location.replace("./index.html");
