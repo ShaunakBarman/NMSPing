@@ -57,6 +57,7 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <div id="headerActions" class="flex flex-wrap items-center gap-2">
         <button id="themeToggleBtn" type="button" class="nms-subcard px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 border border-slate-700 cursor-pointer">
           🌙 Night Mode
         </button>
@@ -173,10 +174,11 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-    import { firebaseConfig, DEFAULT_FLOORS, mergeFloorRooms, mountNmsOpeningSplash, initDayNightToggle } from "./nms-data.js";
+    import { firebaseConfig, DEFAULT_FLOORS, mergeFloorRooms, mountNmsOpeningSplash, initDayNightToggle, setupRotatableMapFrame, attachAdminBackButtonIfAdmin } from "./nms-data.js";
 
     mountNmsOpeningSplash();
     initDayNightToggle("themeToggleBtn");
+    setupRotatableMapFrame({ frameId: "mapFrame", svgId: "mapSvg", rotateBtnId: "rotateMapBtn" });
 
     const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const app = initializeApp(firebaseConfig);
@@ -298,12 +300,6 @@
       clockText.textContent = `Current Time: ${DAYS[now.getDay()]} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     }
 
-    function applyRotation() {
-      const scale = rotationDeg % 180 !== 0 ? " scale(0.76)" : "";
-      mapFrame.style.transformOrigin = "center center";
-      mapFrame.style.transform = `rotate(${rotationDeg}deg)${scale}`;
-    }
-
     function renderMap() {
       const floorMeta = DEFAULT_FLOORS[currentFloor];
       const rooms = mergeFloorRooms(currentFloor, overridesByFloor[currentFloor] || {});
@@ -388,10 +384,7 @@
       }
     }
 
-    document.getElementById("rotateMapBtn").addEventListener("click", () => {
-      rotationDeg = (rotationDeg + 90) % 360;
-      applyRotation();
-    });
+
 
     document.getElementById("enableNotifBtn").addEventListener("click", async () => {
       if (!("Notification" in window)) return alert("In-page chime and alerts are active.");
@@ -484,6 +477,7 @@
       displayName = email.split("@")[0];
       teacherKey = email.replace(/[^a-z0-9]/g, "_");
       teacherTitle.textContent = displayName;
+      attachAdminBackButtonIfAdmin(auth, db, "headerActions", "teacher");
 
       onValue(ref(db, "mapOverrides"), (snap) => {
         const val = snap.val() || {};
