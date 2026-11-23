@@ -76,7 +76,7 @@
 
       <section class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4">
         <svg id="mapSvg" viewBox="0 0 1000 700" class="w-full h-auto rounded-xl bg-slate-950 border border-slate-800">
-          <image id="floorImg" href="./floor-g.jpeg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
+          <image id="floorImg" href="./floor-g.jpg" x="0" y="0" width="1000" height="700" preserveAspectRatio="xMidYMid meet" />
           <g id="polyLayer"></g>
           <g id="roomLabelLayer"></g>
           <g id="beaconLayer"></g>
@@ -102,7 +102,7 @@
 
     const FLOORS = {
       g: {
-        img: "./floor-g.jpeg",
+        img: "./floor-g.jpg",
         rooms: [
           { name: "132", points: "161,414 165,507 210,505 212,412" },
           { name: "131", points: "161,388 161,303 208,301 208,388" },
@@ -114,8 +114,8 @@
           { name: "608", points: "380,432 382,478 430,476 426,452 451,448 581,454 583,401 413,405" }
         ]
       },
-      "1": { img: "./floor-1.jpeg", rooms: [] },
-      "2": { img: "./floor-2.jpeg", rooms: [] }
+      "1": { img: "./floor-1.jpg", rooms: [] },
+      "2": { img: "./floor-2.jpg", rooms: [] }
     };
 
     const STUDENT_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes per student spam lock
