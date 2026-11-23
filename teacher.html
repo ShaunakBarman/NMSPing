@@ -8,13 +8,41 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     .room-poly {
-      fill: rgba(59, 130, 246, 0.22);
-      stroke: #93c5fd;
+      fill: rgba(16, 185, 129, 0.22);
+      stroke: #34d399;
       stroke-width: 2;
       cursor: pointer;
     }
-    .room-poly:hover { fill: rgba(59, 130, 246, 0.4); }
-    .room-poly.active { fill: rgba(16, 185, 129, 0.36); stroke: #34d399; stroke-width: 3; }
+    .room-poly:hover { fill: rgba(16, 185, 129, 0.38); }
+    .room-poly.active { fill: rgba(5, 150, 105, 0.45); stroke: #6ee7b7; stroke-width: 3; }
+
+    body.dnd-active,
+    body.dnd-active.day-mode {
+      background-color: #450a0a !important;
+      color: #fee2e2 !important;
+    }
+    body.dnd-active .nms-card,
+    body.dnd-active.day-mode .nms-card {
+      background-color: #7f1d1d !important;
+      border-color: #f87171 !important;
+      color: #fef2f2 !important;
+    }
+    body.dnd-active .nms-subcard,
+    body.dnd-active.day-mode .nms-subcard,
+    body.dnd-active .nms-input,
+    body.dnd-active.day-mode .nms-input {
+      background-color: #450a0a !important;
+      border-color: #ef4444 !important;
+      color: #fef2f2 !important;
+    }
+    body.dnd-active .nms-muted,
+    body.dnd-active.day-mode .nms-muted {
+      color: #fecaca !important;
+    }
+    body.dnd-active .nms-heading,
+    body.dnd-active.day-mode .nms-heading {
+      color: #ffffff !important;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-5">
@@ -179,6 +207,7 @@
     const pingCount = document.getElementById("pingCount");
     const mapFrame = document.getElementById("mapFrame");
     const activeFloorLabel = document.getElementById("activeFloorLabel");
+    const dndBtn = document.getElementById("dndBtn");
 
     document.getElementById("slotDay").value = String(new Date().getDay());
 
@@ -198,6 +227,43 @@
         osc.stop(ctx.currentTime + 0.36);
       } catch (_) {}
     }
+    function syncDndUi(isDnd) {
+      document.body.classList.toggle("dnd-active", Boolean(isDnd));
+      if (isDnd) {
+        dndBtn.textContent = "🔴 Do Not Disturb: ON (Click to Turn Off)";
+        dndBtn.className = "w-full rounded-xl bg-red-600 hover:bg-red-500 ring-2 ring-red-300 text-white font-bold py-2.5 px-4 text-sm cursor-pointer";
+        statusBanner.textContent = "🔴 Do Not Disturb ON — you are hidden from the student map. Click DND again to return.";
+      } else {
+        dndBtn.textContent = "Do Not Disturb (Remove from Map)";
+        dndBtn.className = "w-full rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer";
+      }
+    }
+
+    dndBtn.addEventListener("click", async () => {
+      const nextDnd = !Boolean(currentState.dnd);
+      if (nextDnd) {
+        await set(ref(db, `presence/${teacherKey}`), {
+          name: displayName,
+          floor: currentFloor,
+          room: "",
+          mode: "dnd",
+          confirmed: false,
+          dnd: true,
+          updatedAt: Date.now()
+        });
+      } else {
+        await set(ref(db, `presence/${teacherKey}`), {
+          name: displayName,
+          floor: currentFloor,
+          room: "",
+          mode: "off",
+          confirmed: false,
+          dnd: false,
+          updatedAt: Date.now()
+        });
+        await checkAutoTimetable();
+      }
+    });
 
     function notifyTeacher(ping) {
       playChime();
@@ -468,9 +534,10 @@
 
       onValue(ref(db, `presence/${teacherKey}`), (snap) => {
         currentState = snap.val() || {};
-        if (currentState.dnd) {
-          statusBanner.textContent = "Do Not Disturb ON — hidden from student map.";
-        } else if (currentState.mode === "confirmed") {
+        syncDndUi(Boolean(currentState.dnd));
+        if (currentState.dnd) return;
+
+        if (currentState.mode === "confirmed") {
           statusBanner.textContent = `Confirmed on map: Floor ${(currentState.floor || "g").toUpperCase()} • ${currentState.room}`;
         } else if (currentState.mode === "possible") {
           statusBanner.textContent = `Auto-timetable active: showing "Possible: ${displayName}" in ${currentState.room}`;
