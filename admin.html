@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NMSPing — Admin Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
+  <div class="max-w-6xl mx-auto space-y-5">
+    <header class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Admin Console • Full Control</span>
+        <h1 class="text-xl font-bold text-white">NMSPing Admin Center</h1>
+        <p id="adminEmailDisplay" class="text-xs text-slate-400"></p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="./map.html" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white">
+          Open map.html Outliner
+        </a>
+        <a href="./teacher.html" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200">
+          Teacher View
+        </a>
+        <a href="./student.html" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200">
+          Student View
+        </a>
+        <button id="logoutBtn" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-600/20 border border-rose-500/40 text-rose-200 hover:bg-rose-600/30 cursor-pointer">
+          Log Out
+        </button>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- 1. Rename Presaved Rooms Across All Pages -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-white">Edit Presaved Room Names</h2>
+            <p class="text-xs text-slate-400">Updates room labels across teacher.html and student.html automatically.</p>
+          </div>
+          <select id="editFloorSelect" class="rounded-xl bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs font-semibold text-white">
+            <option value="g">Floor G</option>
+            <option value="1">Floor 1</option>
+            <option value="2">Floor 2</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="roomPickSelect" class="block text-xs text-slate-400 mb-1">Choose Room Polygon</label>
+          <select id="roomPickSelect" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white"></select>
+        </div>
+
+        <div class="flex gap-2">
+          <input
+            id="newRoomNameInput"
+            type="text"
+            placeholder="Enter new room name (e.g. Meeting Room 1)"
+            class="flex-1 rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white"
+          />
+          <button
+            id="saveRoomNameBtn"
+            type="button"
+            class="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 text-sm cursor-pointer"
+          >
+            Save Name
+          </button>
+        </div>
+
+        <div id="roomSaveMsg" class="hidden text-xs text-emerald-300"></div>
+      </section>
+
+      <!-- 2. Register @gemsed.com Users & Roles in Firebase -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div>
+          <h2 class="text-base font-bold text-white">Add / Manage @gemsed.com Users</h2>
+          <p class="text-xs text-slate-400">
+            Saves user email & role in Firebase Realtime Database. (Also add the user's password in Firebase Auth &gt; Users.)
+          </p>
+        </div>
+
+        <form id="addUserForm" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input
+            id="newUserEmail"
+            type="email"
+            required
+            placeholder="teacher2@gemsed.com"
+            class="sm:col-span-2 rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white"
+          />
+          <select id="newUserRole" class="rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white">
+            <option value="student">Student</option>
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button
+            type="submit"
+            class="sm:col-span-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-4 text-sm cursor-pointer"
+          >
+            Add / Update User in Directory
+          </button>
+        </form>
+
+        <div id="userDirectoryList" class="max-h-48 overflow-y-auto space-y-1.5 text-xs"></div>
+      </section>
+    </div>
+
+    <!-- 3. Campus Broadcast & Quick Reset -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+      <h2 class="text-base font-bold text-white">Campus Banner & Live Data Controls</h2>
+      <div class="flex flex-wrap gap-2">
+        <input
+          id="bannerInput"
+          type="text"
+          placeholder="Optional school announcement shown at top of student/teacher screens..."
+          class="flex-1 min-w-[240px] rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-white"
+        />
+        <button id="saveBannerBtn" type="button" class="rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 text-sm cursor-pointer">
+          Set Banner
+        </button>
+        <button id="clearBannerBtn" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-3.5 py-2 text-sm cursor-pointer">
+          Clear Banner
+        </button>
+        <button id="wipePingsBtn" type="button" class="rounded-xl bg-rose-600/25 border border-rose-500/50 text-rose-200 hover:bg-rose-600/35 font-semibold px-3.5 py-2 text-sm cursor-pointer">
+          Clear All Pings
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { firebaseConfig, mergeFloorRooms, mountNmsOpeningSplash } from "./nms-data.js";
+
+    mountNmsOpeningSplash();
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    let overridesByFloor = { g: {}, "1": {}, "2": {} };
+    let isLoggingOut = false;
+
+    const editFloorSelect = document.getElementById("editFloorSelect");
+    const roomPickSelect = document.getElementById("roomPickSelect");
+    const newRoomNameInput = document.getElementById("newRoomNameInput");
+    const roomSaveMsg = document.getElementById("roomSaveMsg");
+    const userDirectoryList = document.getElementById("userDirectoryList");
+
+    function refreshRoomDropdown() {
+      const fKey = editFloorSelect.value;
+      const rooms = mergeFloorRooms(fKey, overridesByFloor[fKey] || {});
+      const prevId = roomPickSelect.value;
+      roomPickSelect.innerHTML = rooms
+        .map(r => `<option value="${r.id}">${r.name} (default: ${r.originalName})</option>`)
+        .join("");
+      if (prevId && rooms.some(r => r.id === prevId)) {
+        roomPickSelect.value = prevId;
+      }
+      const chosen = rooms.find(r => r.id === roomPickSelect.value) || rooms[0];
+      newRoomNameInput.value = chosen ? chosen.name : "";
+    }
+
+    editFloorSelect.addEventListener("change", refreshRoomDropdown);
+    roomPickSelect.addEventListener("change", refreshRoomDropdown);
+
+    document.getElementById("saveRoomNameBtn").addEventListener("click", async () => {
+      const fKey = editFloorSelect.value;
+      const roomId = roomPickSelect.value;
+      const cleanName = newRoomNameInput.value.trim();
+      if (!roomId || !cleanName) return;
+      await set(ref(db, `mapOverrides/${fKey}/${roomId}`), { name: cleanName, updatedAt: Date.now() });
+      roomSaveMsg.textContent = `Saved "${cleanName}" for Floor ${fKey.toUpperCase()} — live across all pages!`;
+      roomSaveMsg.classList.remove("hidden");
+    });
+
+    document.getElementById("addUserForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("newUserEmail").value.trim().toLowerCase();
+      const role = document.getElementById("newUserRole").value;
+      if (!email.endsWith("@gemsed.com")) {
+        return alert("Please enter a valid @gemsed.com email address.");
+      }
+      const key = email.replace(/[^a-z0-9]/g, "_");
+      await set(ref(db, `users/${key}`), { email, role, updatedAt: Date.now() });
+      document.getElementById("newUserEmail").value = "";
+    });
+
+    document.getElementById("saveBannerBtn").addEventListener("click", async () => {
+      const msg = document.getElementById("bannerInput").value.trim();
+      await set(ref(db, "announcement"), { text: msg, updatedAt: Date.now() });
+    });
+
+    document.getElementById("clearBannerBtn").addEventListener("click", async () => {
+      document.getElementById("bannerInput").value = "";
+      await remove(ref(db, "announcement"));
+    });
+
+    document.getElementById("wipePingsBtn").addEventListener("click", async () => {
+      await remove(ref(db, "pings"));
+      alert("All active student pings cleared.");
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      isLoggingOut = true;
+      await signOut(auth);
+      window.location.replace("./index.html");
+    });
+
+    auth.authStateReady().then(() => {
+      if (!auth.currentUser) {
+        window.location.replace("./index.html");
+        return;
+      }
+      document.getElementById("adminEmailDisplay").textContent = `Signed in as ${auth.currentUser.email}`;
+
+      onValue(ref(db, "mapOverrides"), (snap) => {
+        const val = snap.val() || {};
+        overridesByFloor = {
+          g: val.g || {},
+          "1": val["1"] || {},
+          "2": val["2"] || {}
+        };
+        refreshRoomDropdown();
+      });
+
+      onValue(ref(db, "users"), (snap) => {
+        const users = Object.entries(snap.val() || {});
+        userDirectoryList.innerHTML = users.length
+          ? ""
+          : "<p class='text-slate-500'>No custom users added yet.</p>";
+        users.forEach(([key, u]) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-3 py-2";
+          row.innerHTML = `<span><strong class="text-white">${u.email}</strong> <span class="text-emerald-400 ml-1">[${u.role}]</span></span><button class="text-rose-400 cursor-pointer">Remove</button>`;
+          row.querySelector("button").addEventListener("click", () => remove(ref(db, `users/${key}`)));
+          userDirectoryList.appendChild(row);
+        });
+      });
+
+      onValue(ref(db, "announcement"), (snap) => {
+        document.getElementById("bannerInput").value = snap.val()?.text || "";
+      });
+
+      onAuthStateChanged(auth, (user) => {
+        if (!user && !isLoggingOut) window.location.replace("./index.html");
+      });
+    });
+
+    refreshRoomDropdown();
+  </script>
+</body>
+</html>
