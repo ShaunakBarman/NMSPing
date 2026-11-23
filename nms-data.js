@@ -1,3 +1,5 @@
+import { get, ref } from "[https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js](https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js)";
+
 export const firebaseConfig = {
   apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
   authDomain: "nmsping-a2909.firebaseapp.com",
