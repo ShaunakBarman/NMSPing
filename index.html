@@ -9,11 +9,11 @@
 <body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
   <main class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-xl">
     <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-      NMSPing Test Run
+      NMSPing • GEMS New Millennium School
     </span>
     <h1 class="text-2xl font-bold text-white mt-3">Sign In</h1>
     <p class="text-sm text-slate-400 mt-1 mb-5">
-      Sign in with your <strong class="text-slate-200">@gemsed.com</strong> test account.
+      Sign in with your <strong class="text-slate-200">@gemsed.com</strong> account.
     </p>
 
     <form id="loginForm" class="space-y-4">
@@ -23,7 +23,7 @@
           id="emailInput"
           type="email"
           required
-          placeholder="shaunak.b1_nms@gemsed.com"
+          placeholder="name@gemsed.com"
           class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3.5 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none"
         />
       </div>
@@ -53,27 +53,18 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-    import {
-      getAuth,
-      signInWithEmailAndPassword,
-      signOut,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
+    import { firebaseConfig, mountNmsOpeningSplash } from "./nms-data.js";
 
-    const firebaseConfig = {
-    apiKey: "AIzaSyBh4pTetUQYmIYoUKxjUA2hvvbCHwXfdgQ",
-    authDomain: "nmsping-a2909.firebaseapp.com",
-    projectId: "nmsping-a2909",
-    storageBucket: "nmsping-a2909.firebasestorage.app",
-    messagingSenderId: "321227369348",
-    appId: "1:321227369348:web:86e1a1b09b8333ced48bd1",
-    databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
-    };
+    mountNmsOpeningSplash();
 
+    const ADMIN_EMAILS = ["admin_nms@gemsed.com"];
     const TEACHER_EMAILS = ["teach_nms@gemsed.com"];
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getDatabase(app);
 
     const loginForm = document.getElementById("loginForm");
     const emailInput = document.getElementById("emailInput");
@@ -95,35 +86,52 @@
       msgBox.textContent = text;
     }
 
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      loginBtn.disabled = true;
-      try {
-        const cred = await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
-        const email = (cred.user.email || "").toLowerCase();
-        if (!email.endsWith("@gemsed.com")) {
-          await signOut(auth);
-          showMsg("Only @gemsed.com accounts are allowed.", true);
-        }
-      } catch (err) {
-        showMsg(err.message, true);
-      } finally {
-        loginBtn.disabled = false;
-      }
-    });
-
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-      const email = (user.email || "").toLowerCase();
+    async function routeUser(user) {
+      const email = (user.email || "").trim().toLowerCase();
       if (!email.endsWith("@gemsed.com")) {
         await signOut(auth);
         showMsg("Only @gemsed.com accounts are allowed.", true);
         return;
       }
+
+      if (ADMIN_EMAILS.includes(email)) {
+        window.location.replace("./admin.html");
+        return;
+      }
+
       if (TEACHER_EMAILS.includes(email)) {
-        window.location.href = "./teacher.html";
-      } else {
-        window.location.href = "./student.html";
+        window.location.replace("./teacher.html");
+        return;
+      }
+
+      // Check role in Firebase if admin assigned one
+      try {
+        const userKey = email.replace(/[^a-z0-9]/g, "_");
+        const snap = await get(ref(db, `users/${userKey}`));
+        if (snap.exists()) {
+          const role = snap.val()?.role;
+          if (role === "admin") return window.location.replace("./admin.html");
+          if (role === "teacher") return window.location.replace("./teacher.html");
+        }
+      } catch (_) {}
+
+      window.location.replace("./student.html");
+    }
+
+    auth.authStateReady().then(() => {
+      if (auth.currentUser) routeUser(auth.currentUser);
+    });
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      loginBtn.disabled = true;
+      try {
+        const cred = await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
+        await routeUser(cred.user);
+      } catch (err) {
+        showMsg(err.message, true);
+      } finally {
+        loginBtn.disabled = false;
       }
     });
   </script>
