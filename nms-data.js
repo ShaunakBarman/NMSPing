@@ -8,6 +8,9 @@ export const firebaseConfig = {
   databaseURL: "https://nmsping-a2909-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
+export const ADMIN_EMAILS = ["admin_nms@gemsed.com"];
+export const TEACHER_EMAILS = ["teach_nms@gemsed.com"];
+
 export const DEFAULT_FLOORS = {
   g: {
     label: "Floor G",
@@ -222,17 +225,17 @@ export function injectOpeningAndThemeStyles() {
     @keyframes mapUnfold {
       0% {
         opacity: 0;
-        transform: scale(0.72) rotateX(28deg);
-        clip-path: inset(38% 38% 38% 38% round 24px);
+        transform: scale(0.76);
+        clip-path: inset(34% 34% 34% 34% round 24px);
       }
-      65% {
+      70% {
         opacity: 1;
-        transform: scale(1.02) rotateX(0deg);
+        transform: scale(1.01);
         clip-path: inset(0% 0% 0% 0% round 16px);
       }
       100% {
         opacity: 1;
-        transform: scale(1) rotateX(0deg);
+        transform: scale(1);
         clip-path: inset(0% 0% 0% 0% round 16px);
       }
     }
@@ -248,20 +251,16 @@ export function injectOpeningAndThemeStyles() {
       align-items: center;
       justify-content: center;
       background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
-      animation: splashFadeOut 0.65s ease 1.15s forwards;
+      animation: splashFadeOut 0.55s ease 1.1s forwards;
     }
     .nms-splash-card {
       text-align: center;
-      padding: 28px 36px;
+      padding: 20px 28px;
       border-radius: 24px;
-      background: rgba(15, 23, 42, 0.9);
+      background: rgba(15, 23, 42, 0.92);
       border: 1px solid rgba(52, 211, 153, 0.35);
       box-shadow: 0 25px 70px rgba(16, 185, 129, 0.16);
-      animation: mapUnfold 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
-    .nms-map-sheet {
-      animation: mapUnfold 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-      transition: transform 0.3s ease, background-color 0.45s ease, border-color 0.45s ease;
+      animation: mapUnfold 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
     }
     body.nms-theme-transition,
     body.nms-theme-transition * {
@@ -278,19 +277,26 @@ export function injectOpeningAndThemeStyles() {
     }
     body.day-mode .nms-subcard {
       background-color: #f8fafc !important;
-      border-color: #e2e8f0 !important;
+      border-color: #cbd5e1 !important;
       color: #0f172a !important;
     }
     body.day-mode .nms-muted {
-      color: #475569 !important;
+      color: #334155 !important;
     }
     body.day-mode .nms-heading {
       color: #0f172a !important;
     }
-    body.day-mode .nms-input {
+    body.day-mode .nms-input,
+    body.day-mode select.nms-input,
+    body.day-mode input.nms-input,
+    body.day-mode textarea.nms-input {
       background-color: #ffffff !important;
-      border-color: #cbd5e1 !important;
+      border-color: #94a3b8 !important;
       color: #0f172a !important;
+    }
+    body.day-mode .nms-input option {
+      background-color: #ffffff;
+      color: #0f172a;
     }
   `;
   document.head.appendChild(style);
@@ -304,20 +310,19 @@ export function mountNmsOpeningSplash() {
   splash.className = "nms-splash";
   splash.innerHTML = `
     <div class="nms-splash-card">
-      <div class="text-xs font-bold uppercase tracking-[0.25em] text-emerald-400 mb-2">Unfolding Campus Map</div>
-      <div class="text-4xl font-extrabold tracking-tight text-white">NMSPing</div>
-      <div class="mt-4 mx-auto w-44 h-24 rounded-xl border border-dashed border-emerald-400/60 bg-slate-900/80 grid grid-cols-3 grid-rows-2 gap-1 p-2">
-        <span class="rounded bg-emerald-500/25"></span>
-        <span class="rounded bg-blue-500/25"></span>
-        <span class="rounded bg-amber-500/25"></span>
-        <span class="rounded bg-blue-500/25"></span>
-        <span class="rounded bg-emerald-500/25"></span>
-        <span class="rounded bg-slate-700/60"></span>
+      <img
+        src="./NMSPing.png"
+        alt="NMSPing"
+        onerror="this.style.display='none'; document.getElementById('nms-splash-fallback').style.display='block';"
+        class="max-h-40 w-auto mx-auto rounded-xl object-contain"
+      />
+      <div id="nms-splash-fallback" style="display:none;" class="text-4xl font-extrabold tracking-tight text-white py-6 px-4">
+        NMSPing
       </div>
     </div>
   `;
   document.body.prepend(splash);
-  setTimeout(() => splash.remove(), 1900);
+  setTimeout(() => splash.remove(), 1750);
 }
 
 export function initDayNightToggle(buttonId) {
@@ -346,5 +351,60 @@ export function initDayNightToggle(buttonId) {
       const next = (localStorage.getItem("nms_theme") || "night") === "night" ? "day" : "night";
       applyTheme(next);
     });
+  }
+}
+
+export function setupRotatableMapFrame({ frameId, svgId, rotateBtnId }) {
+  const frame = document.getElementById(frameId);
+  const svg = document.getElementById(svgId);
+  const btn = document.getElementById(rotateBtnId);
+  if (!frame || !svg || !btn) return;
+
+  let deg = 0;
+
+  function renderTransform() {
+    const isSideways = deg % 180 !== 0;
+    frame.style.aspectRatio = isSideways ? "700 / 1000" : "1000 / 700";
+    frame.style.maxWidth = isSideways ? "520px" : "100%";
+    frame.style.margin = isSideways ? "0 auto" : "0";
+    svg.style.width = isSideways ? "1000px" : "100%";
+    svg.style.height = isSideways ? "700px" : "auto";
+    svg.style.transformOrigin = "center center";
+    svg.style.transform = isSideways
+      ? `translate(-150px, 150px) rotate(${deg}deg)`
+      : `rotate(${deg}deg)`;
+    btn.textContent = `🔄 Rotate (${deg}°)`;
+  }
+
+  btn.addEventListener("click", () => {
+    deg = (deg + 90) % 360;
+    renderTransform();
+  });
+}
+
+export async function attachAdminBackButtonIfAdmin(auth, db, containerId, currentPage) {
+  const container = document.getElementById(containerId);
+  if (!container || !auth.currentUser || currentPage === "admin") return;
+
+  const email = (auth.currentUser.email || "").trim().toLowerCase();
+  let isAdmin = ADMIN_EMAILS.includes(email);
+
+  if (!isAdmin) {
+    try {
+      const key = email.replace(/[^a-z0-9]/g, "_");
+      const snap = await get(ref(db, `users/${key}`));
+      if (snap.exists() && snap.val()?.role === "admin") {
+        isAdmin = true;
+      }
+    } catch (_) {}
+  }
+
+  if (isAdmin && !document.getElementById("backToAdminBtn")) {
+    const link = document.createElement("a");
+    link.id = "backToAdminBtn";
+    link.href = "./admin.html";
+    link.className = "px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950";
+    link.textContent = "🛡️ Back to Admin";
+    container.prepend(link);
   }
 }
