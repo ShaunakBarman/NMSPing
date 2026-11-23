@@ -56,15 +56,14 @@
         <p id="clockText" class="nms-muted text-xs text-slate-400 mt-0.5"></p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <div id="headerActions" class="flex flex-wrap items-center gap-2">
+      <div id="headerActions" class="flex flex-wrap items-center gap-2">
         <button id="themeToggleBtn" type="button" class="nms-subcard px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 border border-slate-700 cursor-pointer">
           🌙 Night Mode
         </button>
         <button id="enableNotifBtn" type="button" class="px-3 py-2 rounded-xl text-xs font-semibold bg-amber-500/20 border border-amber-400/50 text-amber-200 cursor-pointer">
           Enable Ping Alerts
         </button>
-        <button type="button" data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer">Floor G</button>
+        <button type="button" data-floor="g" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white cursor-pointer">Floor G</button>
         <button type="button" data-floor="1" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 1</button>
         <button type="button" data-floor="2" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 2</button>
         <button type="button" data-floor="3" class="floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer">Floor 3</button>
@@ -101,7 +100,7 @@
             Resume Auto-Timetable Mode
           </button>
 
-          <button id="dndBtn" type="button" class="w-full rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer">
+          <button id="dndBtn" type="button" class="w-full rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer">
             Do Not Disturb (Remove from Map)
           </button>
 
@@ -111,7 +110,7 @@
         </div>
 
         <div class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-          <h2 class="nms-heading text-sm font-bold text-white">Timetable Photo & Auto Slots</h2>
+          <h2 class="nms-heading text-sm font-bold text-white">Timetable Photo &amp; Auto Slots</h2>
 
           <input id="timetablePhoto" type="file" accept="image/*" class="block w-full text-xs text-slate-400 cursor-pointer" />
           <p id="ocrNote" class="nms-muted text-[11px] text-slate-400 hidden"></p>
@@ -150,11 +149,9 @@
       <section class="nms-card bg-slate-900 border border-slate-800 rounded-2xl p-3 sm:p-4 lg:col-span-2 space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <span id="activeFloorLabel" class="text-xs font-bold uppercase tracking-wider text-emerald-400">Floor G</span>
-          <div class="flex items-center gap-2">
-            <button id="rotateMapBtn" type="button" class="nms-subcard px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 border border-slate-700 cursor-pointer">
-              🔄 Rotate 90°
-            </button>
-          </div>
+          <button id="rotateMapBtn" type="button" class="nms-subcard px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 border border-slate-700 cursor-pointer">
+            🔄 Rotate (0°)
+          </button>
         </div>
 
         <div class="overflow-x-auto">
@@ -174,7 +171,15 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
     import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js";
-    import { firebaseConfig, DEFAULT_FLOORS, mergeFloorRooms, mountNmsOpeningSplash, initDayNightToggle, setupRotatableMapFrame, attachAdminBackButtonIfAdmin } from "./nms-data.js";
+    import {
+      firebaseConfig,
+      DEFAULT_FLOORS,
+      mergeFloorRooms,
+      mountNmsOpeningSplash,
+      initDayNightToggle,
+      setupRotatableMapFrame,
+      attachAdminBackButtonIfAdmin
+    } from "./nms-data.js";
 
     mountNmsOpeningSplash();
     initDayNightToggle("themeToggleBtn");
@@ -189,7 +194,6 @@
     let displayName = "teach_nms";
     let currentFloor = "g";
     let selectedRoom = null;
-    let rotationDeg = 0;
     let slots = [];
     let currentState = {};
     let overridesByFloor = { g: {}, "1": {}, "2": {}, "3": {} };
@@ -207,7 +211,6 @@
     const slotList = document.getElementById("slotList");
     const pingsList = document.getElementById("pingsList");
     const pingCount = document.getElementById("pingCount");
-    const mapFrame = document.getElementById("mapFrame");
     const activeFloorLabel = document.getElementById("activeFloorLabel");
     const dndBtn = document.getElementById("dndBtn");
 
@@ -229,43 +232,6 @@
         osc.stop(ctx.currentTime + 0.36);
       } catch (_) {}
     }
-    function syncDndUi(isDnd) {
-      document.body.classList.toggle("dnd-active", Boolean(isDnd));
-      if (isDnd) {
-        dndBtn.textContent = "🔴 Do Not Disturb: ON (Click to Turn Off)";
-        dndBtn.className = "w-full rounded-xl bg-red-600 hover:bg-red-500 ring-2 ring-red-300 text-white font-bold py-2.5 px-4 text-sm cursor-pointer";
-        statusBanner.textContent = "🔴 Do Not Disturb ON — you are hidden from the student map. Click DND again to return.";
-      } else {
-        dndBtn.textContent = "Do Not Disturb (Remove from Map)";
-        dndBtn.className = "w-full rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer";
-      }
-    }
-
-    dndBtn.addEventListener("click", async () => {
-      const nextDnd = !Boolean(currentState.dnd);
-      if (nextDnd) {
-        await set(ref(db, `presence/${teacherKey}`), {
-          name: displayName,
-          floor: currentFloor,
-          room: "",
-          mode: "dnd",
-          confirmed: false,
-          dnd: true,
-          updatedAt: Date.now()
-        });
-      } else {
-        await set(ref(db, `presence/${teacherKey}`), {
-          name: displayName,
-          floor: currentFloor,
-          room: "",
-          mode: "off",
-          confirmed: false,
-          dnd: false,
-          updatedAt: Date.now()
-        });
-        await checkAutoTimetable();
-      }
-    });
 
     function notifyTeacher(ping) {
       playChime();
@@ -300,6 +266,18 @@
       clockText.textContent = `Current Time: ${DAYS[now.getDay()]} ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     }
 
+    function syncDndUi(isDnd) {
+      document.body.classList.toggle("dnd-active", Boolean(isDnd));
+      if (isDnd) {
+        dndBtn.textContent = "🔴 Do Not Disturb: ON (Click to Turn Off)";
+        dndBtn.className = "w-full rounded-xl bg-red-600 hover:bg-red-500 ring-2 ring-red-300 text-white font-bold py-2.5 px-4 text-sm cursor-pointer";
+        statusBanner.textContent = "🔴 Do Not Disturb ON — you are hidden from the student map. Click DND again to return.";
+      } else {
+        dndBtn.textContent = "Do Not Disturb (Remove from Map)";
+        dndBtn.className = "w-full rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-semibold py-2.5 px-4 text-sm cursor-pointer";
+      }
+    }
+
     function renderMap() {
       const floorMeta = DEFAULT_FLOORS[currentFloor];
       const rooms = mergeFloorRooms(currentFloor, overridesByFloor[currentFloor] || {});
@@ -308,7 +286,7 @@
 
       document.querySelectorAll(".floor-btn").forEach(btn => {
         btn.className = btn.dataset.floor === currentFloor
-          ? "floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white cursor-pointer"
+          ? "floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white cursor-pointer"
           : "floor-btn px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 cursor-pointer";
       });
 
@@ -384,8 +362,6 @@
       }
     }
 
-
-
     document.getElementById("enableNotifBtn").addEventListener("click", async () => {
       if (!("Notification" in window)) return alert("In-page chime and alerts are active.");
       const perm = await Notification.requestPermission();
@@ -427,10 +403,30 @@
       await checkAutoTimetable();
     });
 
-    document.getElementById("dndBtn").addEventListener("click", async () => {
-      await set(ref(db, `presence/${teacherKey}`), {
-        name: displayName, floor: currentFloor, room: "", mode: "dnd", confirmed: false, dnd: true, updatedAt: Date.now()
-      });
+    dndBtn.addEventListener("click", async () => {
+      const nextDnd = !Boolean(currentState.dnd);
+      if (nextDnd) {
+        await set(ref(db, `presence/${teacherKey}`), {
+          name: displayName,
+          floor: currentFloor,
+          room: "",
+          mode: "dnd",
+          confirmed: false,
+          dnd: true,
+          updatedAt: Date.now()
+        });
+      } else {
+        await set(ref(db, `presence/${teacherKey}`), {
+          name: displayName,
+          floor: currentFloor,
+          room: "",
+          mode: "off",
+          confirmed: false,
+          dnd: false,
+          updatedAt: Date.now()
+        });
+        await checkAutoTimetable();
+      }
     });
 
     document.getElementById("clearAllPingsBtn").addEventListener("click", () => remove(ref(db, `pings/${teacherKey}`)));
@@ -471,17 +467,17 @@
     renderMap();
     updateClock();
 
-    auth.authStateReady().then(() => {
+    auth.authStateReady().then(async () => {
       if (!auth.currentUser) return window.location.replace("./index.html");
       const email = (auth.currentUser.email || "").toLowerCase();
       displayName = email.split("@")[0];
       teacherKey = email.replace(/[^a-z0-9]/g, "_");
       teacherTitle.textContent = displayName;
-      attachAdminBackButtonIfAdmin(auth, db, "headerActions", "teacher");
+      await attachAdminBackButtonIfAdmin(auth, db, "headerActions", "teacher");
 
       onValue(ref(db, "mapOverrides"), (snap) => {
         const val = snap.val() || {};
-        overridesByFloor = { g: val.g || {}, "1": val["1"] || {}, "2": val["2"] || {} };
+        overridesByFloor = { g: val.g || {}, "1": val["1"] || {}, "2": val["2"] || {}, "3": val["3"] || {} };
         renderMap();
       });
 
